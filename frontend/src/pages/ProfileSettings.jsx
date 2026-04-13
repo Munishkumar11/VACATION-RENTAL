@@ -1,549 +1,455 @@
-import { useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { User, Lock, CreditCard, Bell, Camera, Trash2, Plus, Eye, EyeOff } from "lucide-react";
 import api from "../api";
-import {
-  User, Mail, Phone, Lock, MapPin, Bell, Shield,
-  CreditCard, Eye, EyeOff, Camera, Check,
-  Trash2, Plus, AlertCircle, Facebook, Home, Banknote,
-  Calendar, Languages, Chrome
-} from "lucide-react";
 
-// ─── MOCK DATA ────────────────────────────────────────────────
-const MOCK_GUEST = {
-  name: "Aarav Mehta",
-  username: "aarav_m",
-  email: "aarav@example.com",
-  phone: "+91 98765 43210",
-  dob: "1995-06-15",
-  bio: "Love exploring new places and meeting people.",
-  location: "Ahmedabad, Gujarat",
+const EMPTY = {
+  name: "",
+  username: "",
+  email: "",
+  phone: "",
+  dob: "",
+  bio: "",
+  location: "",
   language: "English",
-  photo: null,
-  emergencyContact: { name: "Priya Mehta", phone: "+91 97654 32109", relation: "Sister" },
-  savedCards: [
-    { id: 1, type: "Visa", last4: "4242", expiry: "08/27", isDefault: true },
-    { id: 2, type: "Mastercard", last4: "8910", expiry: "03/26", isDefault: false },
-  ],
-};
-
-const MOCK_HOST = {
-  name: "Riya Sharma",
-  username: "riya_host",
-  email: "riya@example.com",
-  phone: "+91 91234 56789",
-  dob: "1990-03-22",
-  bio: "Superhost with 3 properties across Gujarat. Love welcoming guests!",
-  location: "Surat, Gujarat",
-  language: "Hindi",
-  photo: null,
-  bankDetails: { accountHolder: "Riya Sharma", accountNo: "****4567", ifsc: "HDFC0001234", bank: "HDFC Bank" },
+  photo: "",
+  emergencyContact: { name: "", phone: "", relation: "" },
+  savedCards: [],
+  bankDetails: { accountHolder: "", accountNo: "", ifsc: "", bank: "" },
   payoutSchedule: "Monthly",
-  propertyCount: 3,
-  responseRate: "98%",
-  availability: "Weekdays only",
+  notificationPreferences: {
+    bookingConfirmations: true,
+    bookingReminders: true,
+    newMessages: true,
+    promotions: false,
+    updates: true,
+    smsAlerts: false,
+    pushNotifs: true,
+    newBookingRequests: true,
+    reviewAlerts: true,
+    payoutNotifs: true,
+  },
+  privacySettings: {
+    showProfile: true,
+    showReviews: true,
+    shareDataAnalytics: false,
+    personalizedAds: false,
+  },
 };
 
-// ─── HELPERS ──────────────────────────────────────────────────
-const InputField = ({ label, type = "text", value, onChange, placeholder, icon: Icon, hint, disabled }) => (
-  <div className="flex flex-col gap-1.5">
-    <label className="text-xs font-semibold text-[#5a7050] uppercase tracking-wider">{label}</label>
-    <div className="relative">
-      {Icon && <Icon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8aab5c]" />}
-      <input
-        type={type}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        disabled={disabled}
-        className={`w-full ${Icon ? "pl-10" : "pl-4"} pr-4 py-2.5 text-sm text-[#2d3a1e] bg-[#fafaf7] border border-[#ddd8cc] rounded-xl focus:outline-none focus:border-[#8aab5c] focus:ring-2 focus:ring-[#8aab5c]/20 transition-all placeholder:text-[#b0aa9a] disabled:opacity-50 disabled:cursor-not-allowed`}
-      />
-    </div>
-    {hint && <p className="text-xs text-[#9a9485]">{hint}</p>}
-  </div>
-);
+const normalizeUser = (user = {}) => ({
+  ...EMPTY,
+  ...user,
+  dob: user?.dob ? String(user.dob).slice(0, 10) : "",
+  photo: user?.profilePic || user?.photo || "",
+  emergencyContact: { ...EMPTY.emergencyContact, ...(user?.emergencyContact || {}) },
+  savedCards: Array.isArray(user?.savedCards) ? user.savedCards : [],
+  bankDetails: { ...EMPTY.bankDetails, ...(user?.bankDetails || {}) },
+  notificationPreferences: { ...EMPTY.notificationPreferences, ...(user?.notificationPreferences || {}) },
+  privacySettings: { ...EMPTY.privacySettings, ...(user?.privacySettings || {}) },
+});
 
-const TextareaField = ({ label, value, onChange, placeholder, rows = 3 }) => (
-  <div className="flex flex-col gap-1.5">
-    <label className="text-xs font-semibold text-[#5a7050] uppercase tracking-wider">{label}</label>
-    <textarea
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      rows={rows}
-      className="w-full px-4 py-2.5 text-sm text-[#2d3a1e] bg-[#fafaf7] border border-[#ddd8cc] rounded-xl focus:outline-none focus:border-[#8aab5c] focus:ring-2 focus:ring-[#8aab5c]/20 transition-all placeholder:text-[#b0aa9a] resize-none"
-    />
-  </div>
-);
+const fieldCls = "w-full rounded-xl border border-[#ddd8cc] bg-[#fafaf7] px-4 py-2.5 text-sm text-[#2d3a1e] outline-none focus:border-[#8aab5c]";
+const cardCls = "rounded-2xl border border-[#e8e4da] bg-white p-5";
 
-const Toggle = ({ checked, onChange }) => (
-  <button
-    onClick={() => onChange(!checked)}
-    className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${checked ? "bg-[#8aab5c]" : "bg-[#d0ccc0]"}`}
-  >
-    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${checked ? "translate-x-5" : "translate-x-0"}`} />
-  </button>
-);
-
-const SectionCard = ({ title, subtitle, children }) => (
-  <div className="bg-white rounded-2xl border border-[#e8e4da] overflow-hidden">
-    {(title || subtitle) && (
-      <div className="px-6 py-4 border-b border-[#f0ede6]">
-        {title && <h3 className="text-sm font-bold text-[#2d3a1e]">{title}</h3>}
-        {subtitle && <p className="text-xs text-[#9a9485] mt-0.5">{subtitle}</p>}
-      </div>
-    )}
-    <div className="p-6">{children}</div>
-  </div>
-);
-
-const SaveButton = ({ onClick, saved }) => (
-  <button
-    onClick={onClick}
-    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
-      saved ? "bg-[#e8f0df] text-[#5a7a30]" : "bg-[#3d5028] text-white hover:bg-[#2d3a1e] shadow-md hover:shadow-lg"
-    }`}
-  >
-    {saved ? <><Check size={15} /> Saved!</> : "Save Changes"}
-  </button>
-);
-
-// ─── TAB: BASIC INFO ──────────────────────────────────────────
-function BasicInfoTab({ role, data, setData }) {
-  const [saved, setSaved] = useState(false);
-  const fileRef = useRef();
-  const initials = data.name?.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
-
+function SaveButton({ onClick, loading, saved, label = "Save Changes" }) {
   return (
-    <div className="space-y-5">
-      <SectionCard title="Profile Photo">
-        <div className="flex items-center gap-5">
-          <div className="relative">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#8aab5c] to-[#3d5028] flex items-center justify-center text-white text-2xl font-bold shadow-lg overflow-hidden">
-              {data.photo ? <img src={data.photo} alt="avatar" className="w-full h-full object-cover" /> : initials}
-            </div>
-            <button
-              onClick={() => fileRef.current.click()}
-              className="absolute -bottom-1.5 -right-1.5 w-7 h-7 bg-white border-2 border-[#e8e4da] rounded-full flex items-center justify-center hover:bg-[#f5f3ec] transition-colors shadow"
-            >
-              <Camera size={12} className="text-[#5a7050]" />
-            </button>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden"
-              onChange={e => {
-                const f = e.target.files[0];
-                if (f) setData(d => ({ ...d, photo: URL.createObjectURL(f) }));
-              }}
-            />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-[#2d3a1e]">{data.name}</p>
-            <p className="text-xs text-[#9a9485] mt-0.5">JPG, PNG up to 5MB</p>
-            <button onClick={() => fileRef.current.click()} className="mt-2 text-xs font-semibold text-[#5a7a30] hover:text-[#3d5028] transition-colors">
-              Change photo
-            </button>
-          </div>
-        </div>
-      </SectionCard>
-
-      <SectionCard title="Personal Information" subtitle="This will be shown on your public profile">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <InputField label="Full Name" value={data.name} onChange={e => setData(d => ({ ...d, name: e.target.value }))} placeholder="Your full name" icon={User} />
-          <InputField label="Username" value={data.username} onChange={e => setData(d => ({ ...d, username: e.target.value }))} placeholder="@username" hint="Shown publicly" />
-          <InputField label="Date of Birth" type="date" value={data.dob} onChange={e => setData(d => ({ ...d, dob: e.target.value }))} icon={Calendar} hint="Not shown publicly" />
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-[#5a7050] uppercase tracking-wider">Language</label>
-            <div className="relative">
-              <Languages size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8aab5c]" />
-              <select
-                value={data.language}
-                onChange={e => setData(d => ({ ...d, language: e.target.value }))}
-                className="w-full pl-10 pr-4 py-2.5 text-sm text-[#2d3a1e] bg-[#fafaf7] border border-[#ddd8cc] rounded-xl focus:outline-none focus:border-[#8aab5c] transition-all appearance-none"
-              >
-                {["English", "Hindi", "Gujarati", "Marathi", "Tamil", "Telugu"].map(l => <option key={l}>{l}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="sm:col-span-2">
-            <InputField label="Location" value={data.location} onChange={e => setData(d => ({ ...d, location: e.target.value }))} placeholder="City, State" icon={MapPin} />
-          </div>
-          <div className="sm:col-span-2">
-            <TextareaField label="Bio" value={data.bio} onChange={e => setData(d => ({ ...d, bio: e.target.value }))} placeholder="Tell others a bit about yourself..." />
-            <p className="text-xs text-[#b0aa9a] mt-1 text-right">{data.bio?.length || 0}/200</p>
-          </div>
-        </div>
-      </SectionCard>
-
-      {role === "guest" && (
-        <SectionCard title="Emergency Contact" subtitle="Only used in case of an emergency during your stay">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <InputField label="Contact Name" value={data.emergencyContact?.name} onChange={e => setData(d => ({ ...d, emergencyContact: { ...d.emergencyContact, name: e.target.value } }))} placeholder="Full name" icon={User} />
-            <InputField label="Phone Number" value={data.emergencyContact?.phone} onChange={e => setData(d => ({ ...d, emergencyContact: { ...d.emergencyContact, phone: e.target.value } }))} placeholder="+91 XXXXX XXXXX" icon={Phone} />
-            <InputField label="Relationship" value={data.emergencyContact?.relation} onChange={e => setData(d => ({ ...d, emergencyContact: { ...d.emergencyContact, relation: e.target.value } }))} placeholder="e.g. Sister" />
-          </div>
-        </SectionCard>
-      )}
-
-      {role === "host" && (
-        <SectionCard title="Host Overview" subtitle="Your hosting stats at a glance">
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: "Properties", value: data.propertyCount },
-              { label: "Response Rate", value: data.responseRate },
-              { label: "Availability", value: data.availability },
-            ].map(stat => (
-              <div key={stat.label} className="bg-[#f5f3ec] rounded-xl p-4 text-center">
-                <p className="text-lg font-bold text-[#3d5028]">{stat.value}</p>
-                <p className="text-xs text-[#7a8f5a] mt-0.5">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-      )}
-
-      <div className="flex justify-end">
-        <SaveButton onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 2000); }} saved={saved} />
-      </div>
-    </div>
+    <button type="button" onClick={onClick} disabled={loading} className={`rounded-xl px-4 py-2 text-sm font-semibold ${saved ? "bg-[#e8f0df] text-[#5a7a30]" : "bg-[#3d5028] text-white"}`}>
+      {loading ? "Saving..." : saved ? "Saved!" : label}
+    </button>
   );
 }
-
-// ─── TAB: SECURITY ────────────────────────────────────────────
-function SecurityTab({ data }) {
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [passwords, setPasswords] = useState({ current: "", newP: "", confirm: "" });
-  const [saved, setSaved] = useState(false);
-  const [twoFA, setTwoFA] = useState(false);
-
-  const strength = (p) => {
-    if (!p) return null;
-    if (p.length < 6) return { label: "Weak", color: "#e07070", width: "30%" };
-    if (p.length < 10) return { label: "Medium", color: "#d4a84b", width: "60%" };
-    return { label: "Strong", color: "#8aab5c", width: "100%" };
-  };
-  const str = strength(passwords.newP);
-
-  return (
-    <div className="space-y-5">
-      <SectionCard title="Contact Information" subtitle="Used for login and account recovery">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <InputField label="Email Address" value={data.email} icon={Mail} hint="Used to log in" disabled />
-          <InputField label="Phone Number" value={data.phone} icon={Phone} hint="For SMS verification" onChange={() => {}} />
-        </div>
-        <div className="mt-4 flex items-center gap-2 p-3 bg-[#fffbf0] border border-[#f0e0a0] rounded-xl">
-          <AlertCircle size={14} className="text-[#c08a30] shrink-0" />
-          <p className="text-xs text-[#8a6020]">Email changes require verification. A confirmation link will be sent.</p>
-        </div>
-      </SectionCard>
-
-      <SectionCard title="Change Password">
-        <div className="space-y-4">
-          {[
-            { label: "Current Password", key: "current", show: showCurrent, toggle: () => setShowCurrent(v => !v) },
-            { label: "New Password", key: "newP", show: showNew, toggle: () => setShowNew(v => !v) },
-            { label: "Confirm New Password", key: "confirm", show: showConfirm, toggle: () => setShowConfirm(v => !v) },
-          ].map(({ label, key, show, toggle }) => (
-            <div key={key} className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-[#5a7050] uppercase tracking-wider">{label}</label>
-              <div className="relative">
-                <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8aab5c]" />
-                <input
-                  type={show ? "text" : "password"}
-                  value={passwords[key]}
-                  onChange={e => setPasswords(p => ({ ...p, [key]: e.target.value }))}
-                  placeholder={`Enter ${label.toLowerCase()}`}
-                  className="w-full pl-10 pr-10 py-2.5 text-sm text-[#2d3a1e] bg-[#fafaf7] border border-[#ddd8cc] rounded-xl focus:outline-none focus:border-[#8aab5c] focus:ring-2 focus:ring-[#8aab5c]/20 transition-all placeholder:text-[#b0aa9a]"
-                />
-                <button onClick={toggle} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9a9485] hover:text-[#5a7050]">
-                  {show ? <EyeOff size={15} /> : <Eye size={15} />}
-                </button>
-              </div>
-              {key === "newP" && str && (
-                <div className="mt-1 space-y-1">
-                  <div className="h-1.5 bg-[#ece9e0] rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-500" style={{ width: str.width, backgroundColor: str.color }} />
-                  </div>
-                  <p className="text-xs" style={{ color: str.color }}>{str.label} password</p>
-                </div>
-              )}
-              {key === "confirm" && passwords.confirm && passwords.newP !== passwords.confirm && (
-                <p className="text-xs text-[#e07070]">Passwords do not match</p>
-              )}
-            </div>
-          ))}
-        </div>
-      </SectionCard>
-
-      <SectionCard title="Two-Factor Authentication" subtitle="Add an extra layer of security">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${twoFA ? "bg-[#e8f0df]" : "bg-[#f0ede6]"}`}>
-              <Shield size={16} className={twoFA ? "text-[#5a7a30]" : "text-[#9a9485]"} />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-[#2d3a1e]">SMS Authentication</p>
-              <p className="text-xs text-[#9a9485]">{twoFA ? `Enabled — code sent to ${data.phone}` : "Not enabled"}</p>
-            </div>
-          </div>
-          <Toggle checked={twoFA} onChange={setTwoFA} />
-        </div>
-      </SectionCard>
-
-      <SectionCard title="Connected Accounts">
-        {[
-          { name: "Google", icon: Chrome, connected: true, email: data.email },
-          { name: "Facebook", icon: Facebook, connected: false },
-        ].map(acc => (
-          <div key={acc.name} className="flex items-center justify-between py-3 border-b border-[#f0ede6] last:border-0">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#f5f3ec] flex items-center justify-center">
-                <acc.icon size={16} className="text-[#5a7050]" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-[#2d3a1e]">{acc.name}</p>
-                <p className="text-xs text-[#9a9485]">{acc.connected ? acc.email : "Not connected"}</p>
-              </div>
-            </div>
-            <button className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${acc.connected ? "text-[#e07070] bg-[#fdf0f0] hover:bg-[#f5e0e0]" : "text-[#5a7a30] bg-[#e8f0df] hover:bg-[#dce8d0]"}`}>
-              {acc.connected ? "Disconnect" : "Connect"}
-            </button>
-          </div>
-        ))}
-      </SectionCard>
-
-      <div className="flex justify-between items-center">
-        <button className="text-xs font-semibold text-[#e07070] hover:text-[#c05050] transition-colors flex items-center gap-1.5">
-          <Trash2 size={13} /> Delete Account
-        </button>
-        <SaveButton onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 2000); }} saved={saved} />
-      </div>
-    </div>
-  );
-}
-
-// ─── TAB: PAYMENT ─────────────────────────────────────────────
-function PaymentTab({ role, data, setData }) {
-  const [saved, setSaved] = useState(false);
-  const [showAdd, setShowAdd] = useState(false);
-
-  return (
-    <div className="space-y-5">
-      {role === "guest" && (
-        <SectionCard title="Saved Payment Methods" subtitle="Used for booking payments">
-          <div className="space-y-3">
-            {data.savedCards?.map(card => (
-              <div key={card.id} className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${card.isDefault ? "border-[#8aab5c] bg-[#f5faf0]" : "border-[#e8e4da] bg-[#fafaf7]"}`}>
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-7 rounded-md flex items-center justify-center text-xs font-bold ${card.type === "Visa" ? "bg-[#1a1f71] text-white" : "bg-[#eb001b] text-white"}`}>
-                    {card.type === "Visa" ? "VISA" : "MC"}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-[#2d3a1e]">{card.type} •••• {card.last4}</p>
-                    <p className="text-xs text-[#9a9485]">Expires {card.expiry}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {card.isDefault ? (
-                    <span className="text-xs font-semibold text-[#5a7a30] bg-[#e8f0df] px-2 py-1 rounded-lg">Default</span>
-                  ) : (
-                    <button onClick={() => setData(d => ({ ...d, savedCards: d.savedCards.map(c => ({ ...c, isDefault: c.id === card.id })) }))} className="text-xs text-[#8aab5c] hover:text-[#5a7a30] font-semibold">
-                      Set default
-                    </button>
-                  )}
-                  <button onClick={() => setData(d => ({ ...d, savedCards: d.savedCards.filter(c => c.id !== card.id) }))} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#fdf0f0] text-[#c0a0a0] hover:text-[#e07070] transition-colors">
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              </div>
-            ))}
-
-            {showAdd ? (
-              <div className="p-4 rounded-xl border-2 border-dashed border-[#8aab5c] bg-[#f5faf0] space-y-3">
-                <p className="text-sm font-semibold text-[#2d3a1e]">Add New Card</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <InputField label="Card Number" placeholder="1234 5678 9012 3456" icon={CreditCard} onChange={() => {}} value="" />
-                  <InputField label="Cardholder Name" placeholder="Name on card" icon={User} onChange={() => {}} value="" />
-                  <InputField label="Expiry" placeholder="MM/YY" onChange={() => {}} value="" />
-                  <InputField label="CVV" placeholder="•••" type="password" onChange={() => {}} value="" />
-                </div>
-                <div className="flex gap-2 pt-1">
-                  <button onClick={() => setShowAdd(false)} className="flex-1 py-2 text-sm font-semibold text-[#2d3a1e] bg-[#f0ede6] rounded-xl hover:bg-[#e8e4da] transition-colors">Cancel</button>
-                  <button onClick={() => setShowAdd(false)} className="flex-1 py-2 text-sm font-semibold text-white bg-[#3d5028] rounded-xl hover:bg-[#2d3a1e] transition-colors">Add Card</button>
-                </div>
-              </div>
-            ) : (
-              <button onClick={() => setShowAdd(true)} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-[#c8d8b8] text-sm font-semibold text-[#8aab5c] hover:border-[#8aab5c] hover:bg-[#f5faf0] transition-all">
-                <Plus size={15} /> Add New Card
-              </button>
-            )}
-          </div>
-        </SectionCard>
-      )}
-
-      {role === "host" && (
-        <>
-          <SectionCard title="Payout Bank Account" subtitle="Earnings will be transferred to this account">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <InputField label="Account Holder Name" value={data.bankDetails?.accountHolder} icon={User} onChange={e => setData(d => ({ ...d, bankDetails: { ...d.bankDetails, accountHolder: e.target.value } }))} placeholder="As per bank records" />
-              <InputField label="Account Number" value={data.bankDetails?.accountNo} icon={Banknote} placeholder="Account number" onChange={e => setData(d => ({ ...d, bankDetails: { ...d.bankDetails, accountNo: e.target.value } }))} />
-              <InputField label="IFSC Code" value={data.bankDetails?.ifsc} placeholder="e.g. HDFC0001234" onChange={e => setData(d => ({ ...d, bankDetails: { ...d.bankDetails, ifsc: e.target.value } }))} />
-              <InputField label="Bank Name" value={data.bankDetails?.bank} placeholder="Bank name" onChange={e => setData(d => ({ ...d, bankDetails: { ...d.bankDetails, bank: e.target.value } }))} />
-            </div>
-            <div className="mt-4 flex items-center gap-2 p-3 bg-[#f5faf0] border border-[#c8d8b8] rounded-xl">
-              <Shield size={14} className="text-[#5a7a30] shrink-0" />
-              <p className="text-xs text-[#5a7a30]">Your bank details are encrypted and never shared with guests.</p>
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Payout Schedule" subtitle="When you receive your earnings">
-            <div className="grid grid-cols-3 gap-3">
-              {["Daily", "Weekly", "Monthly"].map(opt => (
-                <button key={opt} onClick={() => setData(d => ({ ...d, payoutSchedule: opt }))}
-                  className={`py-3 rounded-xl text-sm font-semibold border-2 transition-all ${data.payoutSchedule === opt ? "border-[#8aab5c] bg-[#f5faf0] text-[#3d5028]" : "border-[#e8e4da] text-[#9a9485] hover:border-[#c8d8b8]"}`}>
-                  {opt}
-                </button>
-              ))}
-            </div>
-          </SectionCard>
-        </>
-      )}
-
-      <div className="flex justify-end">
-        <SaveButton onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 2000); }} saved={saved} />
-      </div>
-    </div>
-  );
-}
-
-// ─── TAB: NOTIFICATIONS ───────────────────────────────────────
-function NotificationsTab({ role }) {
-  const [prefs, setPrefs] = useState({
-    bookingConfirmations: true, bookingReminders: true, newMessages: true,
-    promotions: false, updates: true, smsAlerts: false, pushNotifs: true,
-    newBookingRequests: true, reviewAlerts: true, payoutNotifs: true,
-  });
-  const [privacy, setPrivacy] = useState({
-    showProfile: true, showReviews: true, shareDataAnalytics: false, personalizedAds: false,
-  });
-  const [saved, setSaved] = useState(false);
-
-  const NRow = ({ label, sub, field, obj, setObj }) => (
-    <div className="flex items-center justify-between py-3 border-b border-[#f0ede6] last:border-0">
-      <div>
-        <p className="text-sm font-semibold text-[#2d3a1e]">{label}</p>
-        {sub && <p className="text-xs text-[#9a9485] mt-0.5">{sub}</p>}
-      </div>
-      <Toggle checked={obj[field]} onChange={v => setObj(p => ({ ...p, [field]: v }))} />
-    </div>
-  );
-
-  return (
-    <div className="space-y-5">
-      <SectionCard title="Email Notifications">
-        <NRow label="Booking Confirmations" sub="When a booking is confirmed or cancelled" field="bookingConfirmations" obj={prefs} setObj={setPrefs} />
-        <NRow label="Booking Reminders" sub="24 hours before your stay begins" field="bookingReminders" obj={prefs} setObj={setPrefs} />
-        <NRow label="New Messages" sub="When you receive a message" field="newMessages" obj={prefs} setObj={setPrefs} />
-        <NRow label="Promotions & Deals" sub="Special offers and discounts" field="promotions" obj={prefs} setObj={setPrefs} />
-        <NRow label="Product Updates" sub="New features and improvements" field="updates" obj={prefs} setObj={setPrefs} />
-      </SectionCard>
-
-      {role === "host" && (
-        <SectionCard title="Host Notifications">
-          <NRow label="New Booking Requests" sub="When a guest requests to book your property" field="newBookingRequests" obj={prefs} setObj={setPrefs} />
-          <NRow label="Review Alerts" sub="When a guest leaves you a review" field="reviewAlerts" obj={prefs} setObj={setPrefs} />
-          <NRow label="Payout Notifications" sub="When earnings are transferred to your bank" field="payoutNotifs" obj={prefs} setObj={setPrefs} />
-        </SectionCard>
-      )}
-
-      <SectionCard title="Other Channels">
-        <NRow label="SMS Alerts" sub="Text messages for urgent updates" field="smsAlerts" obj={prefs} setObj={setPrefs} />
-        <NRow label="Push Notifications" sub="In-app and browser notifications" field="pushNotifs" obj={prefs} setObj={setPrefs} />
-      </SectionCard>
-
-      <SectionCard title="Privacy Settings" subtitle="Control how your data and profile are used">
-        <NRow label="Public Profile" sub="Allow others to view your profile" field="showProfile" obj={privacy} setObj={setPrivacy} />
-        <NRow label="Show Reviews" sub="Display reviews on your public profile" field="showReviews" obj={privacy} setObj={setPrivacy} />
-        <NRow label="Analytics Data Sharing" sub="Help us improve with anonymous usage data" field="shareDataAnalytics" obj={privacy} setObj={setPrivacy} />
-        <NRow label="Personalized Ads" sub="See ads relevant to your interests" field="personalizedAds" obj={privacy} setObj={setPrivacy} />
-      </SectionCard>
-
-      <div className="flex justify-end">
-        <SaveButton onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 2000); }} saved={saved} />
-      </div>
-    </div>
-  );
-}
-
-// ─── MAIN ─────────────────────────────────────────────────────
-const TABS = [
-  { id: "basic", label: "Basic Info", icon: User },
-  { id: "security", label: "Account Security", icon: Lock },
-  { id: "payment", label: "Payment", icon: CreditCard },
-  { id: "notifications", label: "Notifications & Privacy", icon: Bell },
-];
 
 export default function ProfileSettings() {
-  const [activeTab, setActiveTab] = useState("basic");
+  const [tab, setTab] = useState("basic");
+  const [profile, setProfile] = useState(EMPTY);
   const [role, setRole] = useState("guest");
-  const [guestData, setGuestData] = useState(MOCK_GUEST);
-  const [hostData, setHostData] = useState(MOCK_HOST);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState("");
+  const [error, setError] = useState("");
+  const [showAddCard, setShowAddCard] = useState(false);
+  const [cardForm, setCardForm] = useState({ type: "Visa", cardNumber: "", expiry: "" });
+  const [passwords, setPasswords] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [showPw, setShowPw] = useState({ currentPassword: false, newPassword: false, confirmPassword: false });
+  const fileRef = useRef(null);
 
-  const data = role === "guest" ? guestData : hostData;
-  const setData = role === "guest" ? setGuestData : setHostData;
-  const initials = data.name?.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+  const initials = useMemo(() => (profile.name || "U").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2), [profile.name]);
+  const avatarSrc = profile.photoPreview || profile.photo;
+
+  const flashSaved = (key) => {
+    setSaved(key);
+    setTimeout(() => setSaved(""), 1800);
+  };
+
+  const loadProfile = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await api.getProfile();
+      if (!res?.success) throw new Error(res?.message || "Could not load profile");
+      setProfile(normalizeUser(res.data));
+      setRole(res.data?.role || "guest");
+      localStorage.setItem("vr_user", JSON.stringify(res.data));
+    } catch (err) {
+      setError(err.message || "Could not load profile");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const saveProfileFields = async (fields, key) => {
+    setSaving(true);
+    setError("");
+    try {
+      const res = await api.saveProfile(fields);
+      if (!res?.success) throw new Error(res?.message || "Save failed");
+      setProfile(normalizeUser(res.data));
+      localStorage.setItem("vr_user", JSON.stringify(res.data));
+      flashSaved(key);
+      return true;
+    } catch (err) {
+      setError(err.message || "Save failed");
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveBasic = () => saveProfileFields({
+    name: profile.name,
+    username: profile.username,
+    phone: profile.phone,
+    dob: profile.dob,
+    bio: profile.bio,
+    location: profile.location,
+    language: profile.language,
+    emergencyContact: profile.emergencyContact,
+    ...(profile.photo instanceof File ? { photo: profile.photo } : {}),
+  }, "basic");
+
+  const savePhone = () => saveProfileFields({ phone: profile.phone }, "security-phone");
+
+  const saveNotifications = () => saveProfileFields({
+    notificationPreferences: profile.notificationPreferences,
+    privacySettings: profile.privacySettings,
+  }, "notifications");
+
+  const saveDefaultCard = (cardId) => saveProfileFields({
+    savedCards: profile.savedCards.map((card) => ({ ...card, isDefault: String(card._id || card.id) === String(cardId) })),
+  }, "payment");
+
+  const saveBank = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      const res = await api.saveBank({ ...profile.bankDetails, payoutSchedule: profile.payoutSchedule });
+      if (!res?.success) throw new Error(res?.message || "Could not save bank details");
+      setProfile(normalizeUser(res.data));
+      flashSaved("payment");
+    } catch (err) {
+      setError(err.message || "Could not save bank details");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addCard = async () => {
+    const digits = cardForm.cardNumber.replace(/\D/g, "");
+    if (digits.length < 4 || !cardForm.expiry) {
+      setError("Enter a valid card number and expiry");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const res = await api.addCard({ type: cardForm.type, last4: digits.slice(-4), expiry: cardForm.expiry });
+      if (!res?.success) throw new Error(res?.message || "Could not add card");
+      setProfile((current) => ({ ...current, savedCards: res.data }));
+      setCardForm({ type: "Visa", cardNumber: "", expiry: "" });
+      setShowAddCard(false);
+      flashSaved("payment");
+    } catch (err) {
+      setError(err.message || "Could not add card");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteCard = async (cardId) => {
+    setSaving(true);
+    setError("");
+    try {
+      const res = await api.deleteCard(cardId);
+      if (!res?.success) throw new Error(res?.message || "Could not delete card");
+      setProfile((current) => ({ ...current, savedCards: res.data }));
+      flashSaved("payment");
+    } catch (err) {
+      setError(err.message || "Could not delete card");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const changePassword = async () => {
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      setError("New password and confirm password do not match");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const res = await api.changePassword({ currentPassword: passwords.currentPassword, newPassword: passwords.newPassword });
+      if (!res?.success) throw new Error(res?.message || "Could not update password");
+      setPasswords({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      flashSaved("security-password");
+    } catch (err) {
+      setError(err.message || "Could not update password");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const tabs = [
+    { id: "basic", label: "Basic Info", icon: User },
+    { id: "security", label: "Security", icon: Lock },
+    { id: "payment", label: "Payment", icon: CreditCard },
+    { id: "notifications", label: "Notifications", icon: Bell },
+  ];
+
+  if (loading) return <div className="min-h-screen bg-[#f5f3ec] px-6 py-8">Loading profile...</div>;
 
   return (
-    <div className="min-h-screen bg-[#f5f3ec]">
-      {/* Header */}
-      <div className="bg-white border-b border-[#e8e4da] px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-bold text-[#2d3a1e]">Profile Settings</h1>
-          <p className="text-xs text-[#9a9485]">Manage your account information</p>
+    <div className="min-h-screen bg-[#f5f3ec] px-4 py-6">
+      <div className="mx-auto max-w-4xl space-y-6">
+        <div className="flex items-center justify-between rounded-2xl border border-[#e8e4da] bg-white px-6 py-4">
+          <div>
+            <h1 className="text-lg font-bold text-[#2d3a1e]">Profile Settings</h1>
+            <p className="text-sm text-[#8c8678]">Changes here are now saved through real APIs.</p>
+          </div>
+          <div className="rounded-xl bg-[#f0ede6] px-4 py-2 text-xs font-semibold capitalize text-[#3d5028]">{role}</div>
         </div>
-        {/* Role switcher — demo only */}
-        <div className="flex items-center gap-1 bg-[#f0ede6] rounded-xl p-1">
-          {["guest", "host"].map(r => (
-            <button key={r} onClick={() => setRole(r)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${role === r ? "bg-white text-[#3d5028] shadow-sm" : "text-[#9a9485] hover:text-[#5a7050]"}`}>
-              {r === "guest" ? <User size={12} /> : <Home size={12} />} {r}
+
+        {error && <div className="rounded-xl border border-[#f0d0d0] bg-[#fff5f5] px-4 py-3 text-sm text-[#c05050]">{error}</div>}
+
+        <div className="flex items-center gap-4 rounded-2xl border border-[#e8e4da] bg-white p-5">
+          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#8aab5c] to-[#3d5028] text-xl font-bold text-white">
+            {avatarSrc ? <img src={avatarSrc} alt="avatar" className="h-full w-full object-cover" /> : initials}
+          </div>
+          <div className="flex-1">
+            <div className="font-bold text-[#2d3a1e]">{profile.name || "No name yet"}</div>
+            <div className="text-sm text-[#8c8678]">@{profile.username || "username"} � {profile.location || "No location"}</div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 rounded-2xl border border-[#e8e4da] bg-white p-2">
+          {tabs.map(({ id, label, icon: Icon }) => (
+            <button key={id} type="button" onClick={() => setTab(id)} className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold ${tab === id ? "bg-[#3d5028] text-white" : "text-[#5a7050]"}`}>
+              <Icon size={14} />
+              {label}
             </button>
           ))}
         </div>
-      </div>
 
-      <div className="max-w-3xl mx-auto px-4 py-6">
-        {/* Profile summary */}
-        <div className="bg-white rounded-2xl border border-[#e8e4da] p-5 mb-6 flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#8aab5c] to-[#3d5028] flex items-center justify-center text-white text-xl font-bold shadow overflow-hidden">
-            {data.photo ? <img src={data.photo} alt="avatar" className="w-full h-full object-cover" /> : initials}
+        {tab === "basic" && (
+          <div className="space-y-5">
+            <div className={cardCls}>
+              <div className="mb-4 text-sm font-semibold text-[#2d3a1e]">Profile Photo</div>
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#8aab5c] to-[#3d5028] text-2xl font-bold text-white">
+                    {avatarSrc ? <img src={avatarSrc} alt="avatar" className="h-full w-full object-cover" /> : initials}
+                  </div>
+                  <button type="button" onClick={() => fileRef.current?.click()} className="absolute -bottom-1 -right-1 rounded-full bg-white p-2 shadow">
+                    <Camera size={12} />
+                  </button>
+                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setProfile((current) => ({ ...current, photo: file, photoPreview: URL.createObjectURL(file) }));
+                  }} />
+                </div>
+                <div className="text-sm text-[#8c8678]">Upload JPG or PNG up to 5MB.</div>
+              </div>
+            </div>
+
+            <div className={cardCls}>
+              <div className="mb-4 text-sm font-semibold text-[#2d3a1e]">Personal Information</div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <input className={fieldCls} placeholder="Full name" value={profile.name} onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))} />
+                <input className={fieldCls} placeholder="Username" value={profile.username} onChange={(e) => setProfile((p) => ({ ...p, username: e.target.value }))} />
+                <input className={fieldCls} placeholder="Phone" value={profile.phone} onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))} />
+                <input className={fieldCls} type="date" value={profile.dob} onChange={(e) => setProfile((p) => ({ ...p, dob: e.target.value }))} />
+                <input className={fieldCls} placeholder="Email" value={profile.email} disabled />
+                <input className={fieldCls} placeholder="Location" value={profile.location} onChange={(e) => setProfile((p) => ({ ...p, location: e.target.value }))} />
+                <select className={fieldCls} value={profile.language} onChange={(e) => setProfile((p) => ({ ...p, language: e.target.value }))}>
+                  {["English", "Hindi", "Gujarati", "Marathi", "Tamil", "Telugu"].map((item) => <option key={item}>{item}</option>)}
+                </select>
+                <div />
+                <textarea className={fieldCls + " sm:col-span-2 min-h-[110px]"} placeholder="Bio" value={profile.bio} onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value.slice(0, 200) }))} />
+              </div>
+            </div>
+
+            {role === "guest" && (
+              <div className={cardCls}>
+                <div className="mb-4 text-sm font-semibold text-[#2d3a1e]">Emergency Contact</div>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <input className={fieldCls} placeholder="Contact name" value={profile.emergencyContact.name} onChange={(e) => setProfile((p) => ({ ...p, emergencyContact: { ...p.emergencyContact, name: e.target.value } }))} />
+                  <input className={fieldCls} placeholder="Phone" value={profile.emergencyContact.phone} onChange={(e) => setProfile((p) => ({ ...p, emergencyContact: { ...p.emergencyContact, phone: e.target.value } }))} />
+                  <input className={fieldCls} placeholder="Relation" value={profile.emergencyContact.relation} onChange={(e) => setProfile((p) => ({ ...p, emergencyContact: { ...p.emergencyContact, relation: e.target.value } }))} />
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end"><SaveButton onClick={saveBasic} loading={saving} saved={saved === "basic"} /></div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-[#2d3a1e]">{data.name}</p>
-            <p className="text-xs text-[#9a9485]">@{data.username} · {data.location}</p>
+        )}
+
+        {tab === "security" && (
+          <div className="space-y-5">
+            <div className={cardCls}>
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-sm font-semibold text-[#2d3a1e]">Contact Information</div>
+                  <div className="text-sm text-[#8c8678]">Phone number is now saved to your account.</div>
+                </div>
+                <SaveButton onClick={savePhone} loading={saving} saved={saved === "security-phone"} label="Save Phone" />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <input className={fieldCls} value={profile.email} disabled />
+                <input className={fieldCls} value={profile.phone} onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))} placeholder="Phone" />
+              </div>
+            </div>
+
+            <div className={cardCls}>
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <div className="text-sm font-semibold text-[#2d3a1e]">Change Password</div>
+                <SaveButton onClick={changePassword} loading={saving} saved={saved === "security-password"} label="Update Password" />
+              </div>
+              <div className="space-y-4">
+                {[
+                  ["currentPassword", "Current Password"],
+                  ["newPassword", "New Password"],
+                  ["confirmPassword", "Confirm Password"],
+                ].map(([key, label]) => (
+                  <div key={key} className="relative">
+                    <input
+                      className={fieldCls + " pr-10"}
+                      type={showPw[key] ? "text" : "password"}
+                      placeholder={label}
+                      value={passwords[key]}
+                      onChange={(e) => setPasswords((p) => ({ ...p, [key]: e.target.value }))}
+                      autoComplete={key === "currentPassword" ? "current-password" : "new-password"}
+                    />
+                    <button type="button" onClick={() => setShowPw((s) => ({ ...s, [key]: !s[key] }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8c8678]">
+                      {showPw[key] ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-          <span className={`text-xs font-bold px-3 py-1.5 rounded-full capitalize ${role === "host" ? "bg-[#fff8e8] text-[#b07030]" : "bg-[#e8f0df] text-[#5a7a30]"}`}>
-            {role}
-          </span>
-        </div>
+        )}
 
-        {/* Tabs */}
-        <div className="flex gap-1 bg-white border border-[#e8e4da] rounded-2xl p-1 mb-6 overflow-x-auto">
-          {TABS.map(tab => {
-            const Icon = tab.icon;
-            return (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex-1 justify-center ${activeTab === tab.id ? "bg-[#3d5028] text-white shadow-sm" : "text-[#7a8f5a] hover:bg-[#f5f3ec] hover:text-[#3d5028]"}`}>
-                <Icon size={13} />
-                <span className="hidden sm:inline">{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
+        {tab === "payment" && role === "guest" && (
+          <div className="space-y-5">
+            <div className={cardCls}>
+              <div className="mb-4 text-sm font-semibold text-[#2d3a1e]">Saved Cards</div>
+              <div className="space-y-3">
+                {profile.savedCards.map((card) => {
+                  const cardId = card._id || card.id;
+                  return (
+                    <div key={cardId} className="flex items-center justify-between rounded-xl border border-[#e8e4da] px-4 py-3">
+                      <div>
+                        <div className="font-semibold text-[#2d3a1e]">{card.type} ���� {card.last4}</div>
+                        <div className="text-sm text-[#8c8678]">Expires {card.expiry}</div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {card.isDefault ? <span className="rounded-lg bg-[#e8f0df] px-2 py-1 text-xs font-semibold text-[#5a7a30]">Default</span> : <button type="button" onClick={() => saveDefaultCard(cardId)} className="text-sm font-semibold text-[#5a7a30]">Set default</button>}
+                        <button type="button" onClick={() => deleteCard(cardId)} className="text-[#c05050]"><Trash2 size={14} /></button>
+                      </div>
+                    </div>
+                  );
+                })}
 
-        {/* Content */}
-        {activeTab === "basic" && <BasicInfoTab role={role} data={data} setData={setData} />}
-        {activeTab === "security" && <SecurityTab data={data} />}
-        {activeTab === "payment" && <PaymentTab role={role} data={data} setData={setData} />}
-        {activeTab === "notifications" && <NotificationsTab role={role} />}
+                {showAddCard ? (
+                  <div className="rounded-xl border border-dashed border-[#8aab5c] p-4">
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <select className={fieldCls} value={cardForm.type} onChange={(e) => setCardForm((c) => ({ ...c, type: e.target.value }))}>
+                        <option>Visa</option>
+                        <option>Mastercard</option>
+                        <option>RuPay</option>
+                      </select>
+                      <input className={fieldCls} placeholder="Card number" value={cardForm.cardNumber} onChange={(e) => setCardForm((c) => ({ ...c, cardNumber: e.target.value }))} />
+                      <input className={fieldCls} placeholder="MM/YY" value={cardForm.expiry} onChange={(e) => setCardForm((c) => ({ ...c, expiry: e.target.value }))} />
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <button type="button" onClick={() => setShowAddCard(false)} className="rounded-xl bg-[#f0ede6] px-4 py-2 text-sm font-semibold text-[#2d3a1e]">Cancel</button>
+                      <button type="button" onClick={addCard} className="rounded-xl bg-[#3d5028] px-4 py-2 text-sm font-semibold text-white">Add Card</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => setShowAddCard(true)} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#c8d8b8] px-4 py-3 text-sm font-semibold text-[#5a7a30]">
+                    <Plus size={14} /> Add New Card
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === "payment" && role === "host" && (
+          <div className="space-y-5">
+            <div className={cardCls}>
+              <div className="mb-4 text-sm font-semibold text-[#2d3a1e]">Bank Details</div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <input className={fieldCls} placeholder="Account Holder" value={profile.bankDetails.accountHolder} onChange={(e) => setProfile((p) => ({ ...p, bankDetails: { ...p.bankDetails, accountHolder: e.target.value } }))} />
+                <input className={fieldCls} placeholder="Account Number" value={profile.bankDetails.accountNo} onChange={(e) => setProfile((p) => ({ ...p, bankDetails: { ...p.bankDetails, accountNo: e.target.value } }))} />
+                <input className={fieldCls} placeholder="IFSC" value={profile.bankDetails.ifsc} onChange={(e) => setProfile((p) => ({ ...p, bankDetails: { ...p.bankDetails, ifsc: e.target.value } }))} />
+                <input className={fieldCls} placeholder="Bank" value={profile.bankDetails.bank} onChange={(e) => setProfile((p) => ({ ...p, bankDetails: { ...p.bankDetails, bank: e.target.value } }))} />
+              </div>
+              <div className="mt-4 flex gap-2">
+                {["Daily", "Weekly", "Monthly"].map((item) => (
+                  <button key={item} type="button" onClick={() => setProfile((p) => ({ ...p, payoutSchedule: item }))} className={`rounded-xl px-4 py-2 text-sm font-semibold ${profile.payoutSchedule === item ? "bg-[#e8f0df] text-[#5a7a30]" : "bg-[#f0ede6] text-[#5a7050]"}`}>
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end"><SaveButton onClick={saveBank} loading={saving} saved={saved === "payment"} /></div>
+          </div>
+        )}
+
+        {tab === "notifications" && (
+          <div className="space-y-5">
+            <div className={cardCls}>
+              <div className="mb-4 text-sm font-semibold text-[#2d3a1e]">Notification Preferences</div>
+              <div className="space-y-3">
+                {Object.entries(profile.notificationPreferences).map(([key, value]) => (
+                  <label key={key} className="flex items-center justify-between rounded-xl border border-[#e8e4da] px-4 py-3 text-sm text-[#2d3a1e]">
+                    <span>{key}</span>
+                    <input type="checkbox" checked={value} onChange={(e) => setProfile((p) => ({ ...p, notificationPreferences: { ...p.notificationPreferences, [key]: e.target.checked } }))} />
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className={cardCls}>
+              <div className="mb-4 text-sm font-semibold text-[#2d3a1e]">Privacy Settings</div>
+              <div className="space-y-3">
+                {Object.entries(profile.privacySettings).map(([key, value]) => (
+                  <label key={key} className="flex items-center justify-between rounded-xl border border-[#e8e4da] px-4 py-3 text-sm text-[#2d3a1e]">
+                    <span>{key}</span>
+                    <input type="checkbox" checked={value} onChange={(e) => setProfile((p) => ({ ...p, privacySettings: { ...p.privacySettings, [key]: e.target.checked } }))} />
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end"><SaveButton onClick={saveNotifications} loading={saving} saved={saved === "notifications"} /></div>
+          </div>
+        )}
       </div>
     </div>
   );

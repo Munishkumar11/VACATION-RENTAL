@@ -1,35 +1,50 @@
-  import { useState } from "react";
-  import axios from "axios";
-  import { toast } from "react-toastify";
-  import { Link } from "react-router-dom";
-  import { formatRating } from "../../utils/formatRating";
-  import {
-    MapPin, Users, Bed, Bath, Home, Star, Heart, ShieldCheck,
-  } from "lucide-react";
+import { useState } from "react";
+import axios from "axios";
+import { toast } from "react-toastify";
+import { Link } from "react-router-dom";
+import { formatRating } from "../../utils/formatRating";
+import useRequireLogin from "../../hooks/useRequireLogin";
+import {
+  MapPin,
+  Users,
+  Bed,
+  Bath,
+  Star,
+  Heart,
+  ShieldCheck,
+} from "lucide-react";
 
-  function PropertyCard({ property, initialWishlisted = false }) {
-    const {
-      title, description, propertyType, pricePerNight, location,
-      maxGuests, bedrooms, bathrooms, beds, images = [],
-      host, rating = 4.5, reviews = 120,
-    } = property;
+function PropertyCard({ property, initialWishlisted = false }) {
+  const {
+    title,
+    description,
+    propertyType,
+    pricePerNight,
+    location,
+    maxGuests,
+    bedrooms,
+    bathrooms,
+    images = [],
+    host,
+    rating = 4.5,
+    reviews = 120,
+  } = property;
 
-    const formattedPrice = new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "INR",
-      minimumFractionDigits: 0,
-    }).format(pricePerNight);
+  const formattedPrice = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 0,
+  }).format(pricePerNight);
 
-    const [wishlisted, setWishlisted] = useState(initialWishlisted);
-    const [loading, setLoading] = useState(false);
+  const [wishlisted, setWishlisted] = useState(initialWishlisted);
+  const [loading, setLoading] = useState(false);
+  const requireLogin = useRequireLogin();
+
   const handleWishlist = async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
-    // ✅ Check login first
-    const storedUser = localStorage.getItem("user");
-    if (!storedUser || storedUser === "undefined") {
-      toast.error("Please login to add to wishlist");
+    if (!requireLogin("Please login to add to wishlist")) {
       return;
     }
 
@@ -44,7 +59,7 @@
       toast.success(res.data.message);
     } catch (error) {
       if (error.response?.status === 401) {
-        toast.error("Please login to add to wishlist");
+        requireLogin("Please login to add to wishlist", { force: true });
       } else {
         toast.error("Something went wrong");
       }
@@ -53,110 +68,157 @@
     }
   };
 
-    return (
-      <div className="group bg-white rounded-2xl shadow-sm border border-[#e0dbd0] overflow-hidden hover:shadow-xl transition-all duration-300">
-        {/* Image Section */}
-        <div className="relative h-56 overflow-hidden">
-          <img
-            src={images[0]?.url || "/placeholder-property.jpg"}
-            alt={title}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-          />
-          <div className="absolute top-3 right-3">
+  return (
+    <div className="premium-card group overflow-hidden rounded-[28px] border border-[rgba(22,58,47,0.1)] bg-white/95 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_60px_rgba(17,24,39,0.14)]">
+      {/* Image Section */}
+      <div className="relative h-64 overflow-hidden rounded-[24px] rounded-b-none">
+        <img
+          src={images[0]?.url || "/placeholder-property.jpg"}
+          alt={title}
+          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+        />
+
+        <div className="absolute inset-0 bg-gradient-to-t from-[rgba(17,24,39,0.42)] via-transparent to-transparent" />
+
+        <div className="absolute right-4 top-4">
           <button
-    onClick={handleWishlist}
-    disabled={loading}
-    className="p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors shadow-sm"
-  >
-    <Heart className={`w-5 h-5 transition-all ${
-      wishlisted ? "fill-red-500 text-red-500" : "text-[#c5c9a0]"
-    }`} />
-  </button>
-          </div>
-          <div className="absolute top-3 left-3">
-            <span className="px-3 py-1 bg-[#6b8c3e] text-white text-xs font-semibold rounded-full">
-              {propertyType}
-            </span>
-          </div>
+            onClick={handleWishlist}
+            disabled={loading}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[rgba(255,255,255,0.45)] bg-white/88 text-[#163a2f] shadow-[0_12px_28px_rgba(17,24,39,0.16)] backdrop-blur-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            <Heart
+              className={`h-5 w-5 transition-all ${
+                wishlisted
+                  ? "fill-[#c86161] text-[#c86161]"
+                  : "text-[#163a2f]"
+              }`}
+            />
+          </button>
         </div>
 
-        {/* Content Section */}
-        <div className="p-5">
-          {/* Title & Rating */}
-          <div className="flex justify-between items-start mb-3">
-            <h3 className="text-lg font-bold text-[#2d3a1e] line-clamp-1 group-hover:text-[#6b8c3e] transition-colors">
-              {title}
-            </h3>
-            <div className="flex items-center gap-1">
-              <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-              <span className="text-sm font-semibold text-[#2d3a1e]">{formatRating(rating)}</span>
-              <span className="text-xs text-[#9a9476]">({reviews})</span>
+        <div className="absolute left-4 top-4">
+          <span className="rounded-full border border-[rgba(255,255,255,0.28)] bg-[rgba(22,58,47,0.76)] px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white backdrop-blur-sm">
+            {propertyType}
+          </span>
+        </div>
+
+        <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3 text-white">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.22em] text-white/70">
+              From
+            </p>
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-['Cormorant_Garamond',serif] text-3xl font-semibold leading-none">
+                {formattedPrice}
+              </span>
+              <span className="text-sm text-white/78">/ night</span>
             </div>
           </div>
 
-          {/* Description */}
-       <p className="text-sm text-[#5a7a30] line-clamp-2 mb-4">
-  {typeof description === "string" ? description : ""}
-</p>
-          {/* Location */}
-          <div className="flex items-center gap-2 text-sm text-[#9a9476] mb-4">
-            <MapPin className="w-4 h-4 text-[#c5c9a0]" />
-            <span className="line-clamp-1">
-              {typeof location === "object" ? `${location?.city ?? ""}, ${location?.country ?? ""}` : location}
-            </span>
-          </div>
-
-          {/* Property Details */}
-          <div className="grid grid-cols-3 gap-3 py-4 border-y border-[#e0dbd0] mb-4">
-            <div className="flex flex-col items-center">
-              <Users className="w-5 h-5 text-[#6b8c3e] mb-1" />
-              <span className="text-xs text-[#9a9476]">Guests</span>
-              <span className="text-sm font-semibold text-[#2d3a1e]">{maxGuests}</span>
+          <div className="rounded-full border border-[rgba(255,255,255,0.28)] bg-white/14 px-3 py-2 backdrop-blur-sm">
+            <div className="flex items-center gap-1.5">
+              <Star className="h-4 w-4 fill-[#C8A96B] text-[#C8A96B]" />
+              <span className="text-sm font-semibold">
+                {formatRating(rating)}
+              </span>
+              <span className="text-xs text-white/70">({reviews})</span>
             </div>
-            <div className="flex flex-col items-center">
-              <Bed className="w-5 h-5 text-[#6b8c3e] mb-1" />
-              <span className="text-xs text-[#9a9476]">Bedrooms</span>
-              <span className="text-sm font-semibold text-[#2d3a1e]">{bedrooms}</span>
-            </div>
-            <div className="flex flex-col items-center">
-              <Bath className="w-5 h-5 text-[#6b8c3e] mb-1" />
-              <span className="text-xs text-[#9a9476]">Bathrooms</span>
-              <span className="text-sm font-semibold text-[#2d3a1e]">{bathrooms}</span>
-            </div>
-          </div>
-
-          {/* Host Info */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#8aab5c] to-[#6b8c3e] flex items-center justify-center text-white text-xs font-bold">
-              {host?.name?.charAt(0) || "H"}
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-[#2d3a1e]">
-                Hosted by {host?.name || "Verified Host"}
-              </p>
-              <div className="flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3 text-green-500" />
-                <span className="text-xs text-[#9a9476]">Verified</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Price & CTA */}
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-2xl font-bold text-[#2d3a1e]">{formattedPrice}</span>
-              <span className="text-sm text-[#9a9476]"> / night</span>
-            </div>
-            <Link
-              to={`/property/${property?._id}`}
-              className="bg-[#6b8c3e] text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-[#5a7a30] transition-colors shadow-sm"
-            >
-              View Details
-            </Link>
           </div>
         </div>
       </div>
-    );
-  }
 
-  export default PropertyCard;
+      {/* Content Section */}
+      <div className="space-y-5 p-6">
+        {/* Title & Description */}
+        <div className="space-y-2">
+          <h3 className="font-['Cormorant_Garamond',serif] text-[1.9rem] font-semibold leading-none text-[#163a2f] transition-colors group-hover:text-[#234f41]">
+            {title}
+          </h3>
+
+          <p className="line-clamp-2 text-sm leading-6 text-[#5f6570]">
+            {typeof description === "string" ? description : ""}
+          </p>
+        </div>
+
+        {/* Location */}
+        <div className="flex items-center gap-2 text-sm text-[#6b7280]">
+          <MapPin className="h-4 w-4 text-[#C8A96B]" />
+          <span className="line-clamp-1">
+            {typeof location === "object"
+              ? `${location?.city ?? ""}, ${location?.country ?? ""}`
+              : location}
+          </span>
+        </div>
+
+        {/* Property Details */}
+        <div className="grid grid-cols-3 gap-3 rounded-[22px] border border-[rgba(22,58,47,0.08)] bg-[#fcfbf8] p-3.5">
+          <div className="rounded-[18px] bg-white px-3 py-3 text-center shadow-[0_10px_22px_rgba(17,24,39,0.05)]">
+            <Users className="mx-auto mb-2 h-4 w-4 text-[#163a2f]" />
+            <span className="text-[10px] uppercase tracking-[0.18em] text-[#9ca3af]">
+              Guests
+            </span>
+            <span className="mt-1 block text-sm font-semibold text-[#1e1e1e]">
+              {maxGuests}
+            </span>
+          </div>
+
+          <div className="rounded-[18px] bg-white px-3 py-3 text-center shadow-[0_10px_22px_rgba(17,24,39,0.05)]">
+            <Bed className="mx-auto mb-2 h-4 w-4 text-[#163a2f]" />
+            <span className="text-[10px] uppercase tracking-[0.18em] text-[#9ca3af]">
+              Bedrooms
+            </span>
+            <span className="mt-1 block text-sm font-semibold text-[#1e1e1e]">
+              {bedrooms}
+            </span>
+          </div>
+
+          <div className="rounded-[18px] bg-white px-3 py-3 text-center shadow-[0_10px_22px_rgba(17,24,39,0.05)]">
+            <Bath className="mx-auto mb-2 h-4 w-4 text-[#163a2f]" />
+            <span className="text-[10px] uppercase tracking-[0.18em] text-[#9ca3af]">
+              Bathrooms
+            </span>
+            <span className="mt-1 block text-sm font-semibold text-[#1e1e1e]">
+              {bathrooms}
+            </span>
+          </div>
+        </div>
+
+        {/* Host Info */}
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-[#8aab5c] to-[#6b8c3e] text-xs font-bold text-white">
+            {host?.name?.charAt(0) || "H"}
+          </div>
+
+          <div className="flex-1">
+            <p className="text-sm font-medium text-[#2d3a1e]">
+              Hosted by {host?.name || "Verified Host"}
+            </p>
+            <div className="flex items-center gap-1">
+              <ShieldCheck className="h-3 w-3 text-green-500" />
+              <span className="text-xs text-[#9a9476]">Verified</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Price & CTA */}
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-2xl font-bold text-[#2d3a1e]">
+              {formattedPrice}
+            </span>
+            <span className="text-sm text-[#9a9476]"> / night</span>
+          </div>
+
+          <Link
+            to={`/property/${property?._id}`}
+            className="rounded-xl bg-[#6b8c3e] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#5a7a30]"
+          >
+            View Details
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default PropertyCard;

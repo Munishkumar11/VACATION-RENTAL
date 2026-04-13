@@ -48,6 +48,25 @@ const getDismissedNotificationIds = async (currentUserId) => {
   return user?.dismissedNotifications || [];
 };
 
+const getReadNotificationIds = async (currentUserId) => {
+  if (!currentUserId) return [];
+
+  const user = await User.findById(currentUserId)
+    .select("readNotifications")
+    .lean();
+
+  return user?.readNotifications || [];
+};
+
+const applyReadState = (notifications, readNotificationIds = []) => {
+  const readIdSet = new Set(readNotificationIds);
+
+  return notifications.map((notification) => ({
+    ...notification,
+    isUnread: notification.isUnread || !readIdSet.has(notification.id),
+  }));
+};
+
 const getUnreadMessageNotifications = async (currentUserId) => {
   const messages = await Message.find({
     receiver: currentUserId,
@@ -300,7 +319,7 @@ const getNotifications = async (req, res) => {
     const currentUserId = getCurrentUserId(req);
     const role = req.user?.role;
 
-    const [messageNotifications, roleNotifications, dismissedNotifications] = await Promise.all([
+    const [messageNotifications, roleNotifications, dismissedNotifications, readNotifications] = await Promise.all([
       getUnreadMessageNotifications(currentUserId),
       role === "guest"
         ? getGuestNotifications(currentUserId)
@@ -310,11 +329,15 @@ const getNotifications = async (req, res) => {
             ? getAdminNotifications()
             : Promise.resolve([]),
       getDismissedNotificationIds(currentUserId),
+      getReadNotificationIds(currentUserId),
     ]);
 
     const dismissedIdSet = new Set(dismissedNotifications);
-    const notifications = sortAndLimit([...messageNotifications, ...roleNotifications]).filter(
+    const notifications = applyReadState(
+      sortAndLimit([...messageNotifications, ...roleNotifications]).filter(
       (notification) => !dismissedIdSet.has(notification.id)
+      ),
+      readNotifications
     );
 
     res.status(200).json({
@@ -354,7 +377,64 @@ const dismissNotification = async (req, res) => {
   }
 };
 
+const markAllNotificationsAsRead = async (req, res) => {
+  try {
+    const currentUserId = getCurrentUserId(req);
+    const role = req.user?.role;
+
+    if (!currentUserId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const [messageNotifications, roleNotifications] = await Promise.all([
+      getUnreadMessageNotifications(currentUserId),
+      role === "guest"
+        ? getGuestNotifications(currentUserId)
+        : role === "host"
+          ? getHostNotifications(currentUserId)
+          : role === "admin"
+            ? getAdminNotifications()
+            : Promise.resolve([]),
+    ]);
+
+    const notificationIds = sortAndLimit([
+      ...messageNotifications,
+      ...roleNotifications,
+    ]).map((notification) => notification.id);
+
+    await Message.updateMany(
+      {
+        receiver: currentUserId,
+        isRead: false,
+      },
+      {
+        $set: { isRead: true },
+      }
+    );
+
+    if (notificationIds.length) {
+      await User.findByIdAndUpdate(currentUserId, {
+        $addToSet: {
+          readNotifications: {
+            $each: notificationIds,
+          },
+        },
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Notifications marked as read",
+      data: notificationIds,
+    });
+  } catch (error) {
+    console.log("MARK ALL NOTIFICATIONS READ ERROR:", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 module.exports = {
   getNotifications,
   dismissNotification,
+  markAllNotificationsAsRead,
 };

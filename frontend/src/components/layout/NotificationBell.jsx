@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Bell, Calendar, Home, MessageSquare, RefreshCw, Trash2, UserPlus } from "lucide-react";
+import { Bell, Calendar, CheckCheck, Home, MessageSquare, RefreshCw, Trash2, UserPlus } from "lucide-react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 
@@ -30,7 +30,6 @@ const getNotificationIcon = (type) => {
 
 export default function NotificationBell({
   enabled = true,
-  storageKey = "notifications_seen",
   title = "Notifications",
   buttonClassName = "",
   iconClassName = "",
@@ -41,23 +40,10 @@ export default function NotificationBell({
   const [loading, setLoading] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [error, setError] = useState("");
-  const [seenAt, setSeenAt] = useState(0);
+  const [markingRead, setMarkingRead] = useState(false);
   const containerRef = useRef(null);
 
-  const saveSeenAt = (items) => {
-    const latestTimestamp = items.reduce((latest, item) => {
-      const itemTimestamp = new Date(item.createdAt).getTime();
-      return itemTimestamp > latest ? itemTimestamp : latest;
-    }, 0);
-
-    if (!latestTimestamp) return;
-
-    const nextSeenAt = new Date(latestTimestamp).toISOString();
-    localStorage.setItem(storageKey, nextSeenAt);
-    setSeenAt(latestTimestamp);
-  };
-
-  const fetchNotifications = async ({ silent = false, markSeen = false } = {}) => {
+  const fetchNotifications = async ({ silent = false } = {}) => {
     if (!enabled) {
       setNotifications([]);
       return;
@@ -73,10 +59,6 @@ export default function NotificationBell({
 
       setNotifications(nextNotifications);
       setError("");
-
-      if (markSeen) {
-        saveSeenAt(nextNotifications);
-      }
     } catch (fetchError) {
       setNotifications([]);
       setError(fetchError.response?.data?.message || "Unable to load notifications");
@@ -90,13 +72,6 @@ export default function NotificationBell({
   useEffect(() => {
     if (!enabled) return undefined;
 
-    const rawSeenAt = localStorage.getItem(storageKey);
-    if (rawSeenAt) {
-      setSeenAt(new Date(rawSeenAt).getTime());
-    } else {
-      setSeenAt(0);
-    }
-
     fetchNotifications({ silent: true });
 
     const intervalId = window.setInterval(() => {
@@ -106,7 +81,7 @@ export default function NotificationBell({
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [enabled, storageKey]);
+  }, [enabled]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -122,19 +97,14 @@ export default function NotificationBell({
     };
   }, []);
 
-  const unreadBaseline = seenAt > 0 ? seenAt : Date.now() - 7 * 24 * 60 * 60 * 1000;
-
-  const unreadCount = notifications.filter((notification) => {
-    const createdAt = new Date(notification.createdAt).getTime();
-    return notification.isUnread || createdAt > unreadBaseline;
-  }).length;
+  const unreadCount = notifications.filter((notification) => notification.isUnread).length;
 
   const handleToggle = async () => {
     const nextOpen = !open;
     setOpen(nextOpen);
 
     if (nextOpen) {
-      await fetchNotifications({ markSeen: true });
+      await fetchNotifications();
     }
   };
 
@@ -149,6 +119,30 @@ export default function NotificationBell({
       );
     } catch (deleteError) {
       setError(deleteError.response?.data?.message || "Unable to delete notification");
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    if (!notifications.length || markingRead) return;
+
+    setMarkingRead(true);
+    try {
+      const res = await axios.patch("/notification/read-all");
+      const readNotificationIds = new Set(res.data?.data || []);
+
+      setNotifications((currentNotifications) =>
+        currentNotifications.map((notification) => ({
+          ...notification,
+          isUnread: readNotificationIds.size
+            ? !readNotificationIds.has(notification.id) && notification.isUnread
+            : false,
+        }))
+      );
+      setError("");
+    } catch (markReadError) {
+      setError(markReadError.response?.data?.message || "Unable to mark notifications as read");
+    } finally {
+      setMarkingRead(false);
     }
   };
 
@@ -181,15 +175,28 @@ export default function NotificationBell({
                 {unreadCount > 0 ? `${unreadCount} new item${unreadCount > 1 ? "s" : ""}` : "You're all caught up"}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => fetchNotifications()}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#d6cebc] text-[#8a8267] transition hover:border-[#6b8c3e] hover:text-[#6b8c3e]"
-              aria-label="Refresh notifications"
-              title="Refresh notifications"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleMarkAllAsRead}
+                disabled={markingRead || unreadCount === 0}
+                className="inline-flex h-8 items-center gap-1.5 rounded-full border border-[#d6cebc] px-3 text-[11px] font-medium text-[#8a8267] transition hover:border-[#6b8c3e] hover:text-[#6b8c3e] disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Mark all notifications as read"
+                title="Mark all as read"
+              >
+                <CheckCheck className="h-3.5 w-3.5" />
+                {markingRead ? "Marking..." : "Mark all read"}
+              </button>
+              <button
+                type="button"
+                onClick={() => fetchNotifications()}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#d6cebc] text-[#8a8267] transition hover:border-[#6b8c3e] hover:text-[#6b8c3e]"
+                aria-label="Refresh notifications"
+                title="Refresh notifications"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           <div className="max-h-[420px] overflow-y-auto">

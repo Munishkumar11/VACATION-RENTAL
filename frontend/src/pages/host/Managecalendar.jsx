@@ -265,7 +265,7 @@ export default function ManageCalendar() {
       </div>
 
       {/* ── Main grid ────────────────────────────────────────── */}
-      <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 300px" }}>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
 
         {/* Calendar card */}
         <div className="rounded-2xl p-5" style={{ background: "#fff", border: "1px solid #dde5cc" }}>
@@ -301,21 +301,31 @@ export default function ManageCalendar() {
           </div>
 
           {/* Days grid */}
-          <div className="grid grid-cols-7 gap-1">
-            {Array.from({ length: firstDay }, (_, i) => <div key={`e-${i}`} />)}
+          <div className="grid grid-cols-7 gap-2">
+            {Array.from({ length: firstDay }, (_, i) => (
+              <div
+                key={`e-${i}`}
+                className="min-h-[88px] rounded-xl"
+                style={{ background: "#fafbf7", border: "1px dashed #eef2e8" }}
+              />
+            ))}
             {Array.from({ length: daysInMonth }, (_, i) => {
               const day   = i + 1;
               const key   = dateKey(year, month, day);
               const style = getDayStyle(day);
               const price    = propPrices[key];
               const minStay  = propMinStays[key];
+              const cellDate = new Date(year, month, day);
+              cellDate.setHours(0, 0, 0, 0);
+              const isToday = cellDate.getTime() === today.getTime();
+              const isBooked = bookedSet.has(key);
+              const isBlocked = propBlocked.has(key);
               return (
                 <div
                   key={day}
                   onClick={() => toggleDay(day)}
-                  className="aspect-square rounded-lg flex flex-col items-center justify-center transition-all"
+                  className="min-h-[88px] rounded-xl flex flex-col justify-between p-3 transition-all"
                   style={{
-                    fontSize: 12,
                     cursor: style.cursor,
                     background: style.bg,
                     color: style.text,
@@ -325,13 +335,36 @@ export default function ManageCalendar() {
                   onMouseEnter={e => { if (style.hover) e.currentTarget.style.background="#f0f5e8"; }}
                   onMouseLeave={e => { if (style.hover) e.currentTarget.style.background="transparent"; }}
                 >
-                  <span>{day}</span>
-                  {price && !bookedSet.has(key) && !propBlocked.has(key) && (
-                    <span style={{ fontSize: 7, color: "#4e7c2a", lineHeight: 1 }}>₹{(price/1000).toFixed(1)}k</span>
-                  )}
-                  {minStay && !bookedSet.has(key) && !propBlocked.has(key) && (
-                    <span style={{ fontSize: 7, color: "#7a8f5a", lineHeight: 1 }}>{minStay}n+</span>
-                  )}
+                  <div className="flex items-start justify-between gap-2">
+                    <span style={{ fontSize: 14, fontWeight: 500 }}>{day}</span>
+                    {isToday && (
+                      <span
+                        className="rounded-full px-2 py-0.5"
+                        style={{ fontSize: 9, background: "rgba(255,255,255,0.18)", color: "#fff" }}
+                      >
+                        Today
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-auto flex flex-col gap-1">
+                    {price && !isBooked && !isBlocked && (
+                      <span
+                        className="inline-flex w-fit rounded-full px-2 py-1"
+                        style={{ fontSize: 9, color: "#2d6010", background: "#eaf5d8", lineHeight: 1 }}
+                      >
+                        ₹{(price/1000).toFixed(1)}k
+                      </span>
+                    )}
+                    {minStay && !isBooked && !isBlocked && (
+                      <span style={{ fontSize: 9, color: "#7a8f5a", lineHeight: 1.1 }}>{minStay} night minimum</span>
+                    )}
+                    {isBooked && (
+                      <span style={{ fontSize: 9, color: "#5a7aaa", lineHeight: 1.1 }}>Reserved</span>
+                    )}
+                    {isBlocked && (
+                      <span style={{ fontSize: 9, color: "#b07a35", lineHeight: 1.1 }}>Blocked</span>
+                    )}
+                  </div>
                 </div>
               );
             })}

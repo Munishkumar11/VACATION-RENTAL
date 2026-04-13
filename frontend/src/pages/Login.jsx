@@ -82,6 +82,7 @@ export default function Login() {
                   message: "Invalid email",
                 },
               })}
+              autoComplete="email"
               error={errors.email?.message}
               placeholder="rahul@example.com"
             />
@@ -93,6 +94,7 @@ export default function Login() {
               {...register("password", {
                 required: "Password is required",
               })}
+              autoComplete="current-password"
               error={errors.password?.message}
               placeholder="Enter your password"
               rightEl={

@@ -27,12 +27,11 @@ export default function Signup() {
 const onSubmit = async (data) => {
   try {
     setLoading(true);
-    const { confirmPassword, ...userData } = data;
+    const { confirmPassword: _, ...userData } = data;
     if (role === "host") userData.role = "host";
     
     const res = await axios.post("/user/register", userData);
     toast.success(res.data.message);
-
     // 👇 This is the only change — was navigate("/") before
     if (role === "host") {
       navigate("/host/HostDashboard");  // host goes here
@@ -92,6 +91,7 @@ const onSubmit = async (data) => {
               label="Name"
               icon={User}
               {...register("name", { required: "Name is required" })}
+              autoComplete="name"
               error={errors.name?.message}
               placeholder="Rahul Sharma"
             />
@@ -103,6 +103,7 @@ const onSubmit = async (data) => {
                 required: "Email required",
                 pattern: { value: /^\S+@\S+$/i, message: "Invalid email" },
               })}
+              autoComplete="email"
               error={errors.email?.message}
               placeholder="rahul@example.com"
             />
@@ -114,6 +115,7 @@ const onSubmit = async (data) => {
                 required: "Phone required",
                 minLength: { value: 10, message: "Phone must be 10 digits" },
               })}
+              autoComplete="tel"
               error={errors.phone?.message}
               placeholder="9876543210"
             />
@@ -126,6 +128,7 @@ const onSubmit = async (data) => {
                 required: "Password required",
                 minLength: { value: 6, message: "Min 6 characters" },
               })}
+              autoComplete="new-password"
               error={errors.password?.message}
               placeholder="Min 6 chars"
               rightEl={
@@ -144,6 +147,7 @@ const onSubmit = async (data) => {
               {...register("confirmPassword", {
                 validate: (value) => value === password || "Passwords do not match",
               })}
+              autoComplete="new-password"
               error={errors.confirmPassword?.message}
               placeholder="repeat"
               rightEl={

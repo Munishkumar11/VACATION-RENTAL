@@ -7,11 +7,14 @@ import {
 import axios from "axios";
 import { toast } from "react-toastify";
 import { formatRating } from "../utils/formatRating";
+import useRequireLogin from "../hooks/useRequireLogin";
 
 function PropertyDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const requireLogin = useRequireLogin();
   const [property, setProperty] = useState();
+  const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedImage, setSelectedImage] = useState(0);
   const [bookingDates, setBookingDates] = useState({
@@ -36,19 +39,15 @@ function PropertyDetail() {
     const getProperty = async () => {
       try {
         const res = await axios.get(`/property/${id}`);
-        console.log(res.data);
         setProperty(res.data.data);
-      } catch (error) {
-        console.log(error);
+      } catch {
+        toast.error("Unable to load property details.");
+      } finally {
+        setLoading(false);
       }
     };
     getProperty();
   }, [id]);
-
-  useEffect(() => {
-    console.log("PROPERTY:", property);
-    console.log("HOST:", property?.host);
-  }, [property]);
 
   // ── Build a Set of blocked date strings "YYYY-MM-DD" from DB data ──
   const blockedDateStrings = useMemo(() => {
@@ -122,6 +121,10 @@ function PropertyDetail() {
   };
 
   const handleBooking = () => {
+    if (!requireLogin("Please login to continue your booking")) {
+      return;
+    }
+
     if (!bookingDates.checkIn || !bookingDates.checkOut) return;
 
     // Final safety check before navigating
@@ -146,6 +149,10 @@ function PropertyDetail() {
   };
 
   const handleMessageHost = () => {
+    if (!requireLogin("Please login to message the host")) {
+      return;
+    }
+
     if (!host?._id) {
       toast.error("Host information is unavailable right now.");
       return;
@@ -153,6 +160,33 @@ function PropertyDetail() {
 
     navigate(`/messages?userId=${host._id}&propertyId=${property?._id}`);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f5f3ec] flex items-center justify-center px-4">
+        <div className="rounded-2xl border border-[#e0dbd0] bg-white px-6 py-5 text-sm font-medium text-[#5a7a30] shadow-sm">
+          Loading property details...
+        </div>
+      </div>
+    );
+  }
+
+  if (!property) {
+    return (
+      <div className="min-h-screen bg-[#f5f3ec] flex items-center justify-center px-4">
+        <div className="max-w-md rounded-2xl border border-[#e0dbd0] bg-white px-6 py-5 text-center shadow-sm">
+          <p className="text-base font-semibold text-[#2d3a1e]">Property not available</p>
+          <p className="mt-2 text-sm text-[#7b745f]">This listing could not be loaded right now.</p>
+          <Link
+            to="/"
+            className="mt-4 inline-flex items-center justify-center rounded-xl bg-[#6b8c3e] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#5a7a30]"
+          >
+            Back to Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f5f3ec]">

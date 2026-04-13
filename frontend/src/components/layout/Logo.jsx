@@ -6,7 +6,7 @@ export default function Logo() {
         <Link to="/" className="flex items-center gap-2">
             <Home size={22} className="text-[#6b8c3e]" />
             <span className="text-xl font-bold text-[#2d3a1e]">
-                Home<span className="text-[#6b8c3e]">Haven</span>
+                AKSHU ELITE HOMES
             </span>
         </Link>
     );

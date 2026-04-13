@@ -55,12 +55,13 @@ const createBooking = async (req, res) => {
   try {
     const booking = await Booking.create(req.body);
     res.status(201).json({
+      success: true,
       message: "Booking created successfully",
       data: booking,
     });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
@@ -71,10 +72,10 @@ const getAllBookings = async (req, res) => {
       .populate("property", "title location pricePerNight")
       .populate("guest", "name email")
       .populate("host", "name email");
-    res.status(200).json({ message: "Bookings fetched successfully", data: bookings });
+    res.status(200).json({ success: true, message: "Bookings fetched successfully", data: bookings });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
@@ -86,11 +87,11 @@ const getBookingById = async (req, res) => {
       .populate("guest", "name email")
       .populate("host", "name email");
     if (!booking)
-      return res.status(404).json({ message: "Booking not found" });
-    res.status(200).json({ message: "Booking fetched successfully", data: booking });
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    res.status(200).json({ success: true, message: "Booking fetched successfully", data: booking });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
@@ -103,11 +104,11 @@ const updateBooking = async (req, res) => {
       {  returnDocument: "after" }
     );
     if (!booking)
-      return res.status(404).json({ message: "Booking not found" });
-    res.status(200).json({ message: "Booking updated successfully", data: booking });
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    res.status(200).json({ success: true, message: "Booking updated successfully", data: booking });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
@@ -116,11 +117,11 @@ const deleteBooking = async (req, res) => {
   try {
     const booking = await Booking.findByIdAndDelete(req.params.id);
     if (!booking)
-      return res.status(404).json({ message: "Booking not found" });
-    res.status(200).json({ message: "Booking deleted successfully" });
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    res.status(200).json({ success: true, message: "Booking deleted successfully" });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 // ✅ NEW — GET GUEST'S OWN BOOKINGS
@@ -134,7 +135,7 @@ const getMyBookings = async (req, res) => {
     res.status(200).json({ success: true, data: bookings });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
@@ -154,7 +155,7 @@ const getHostBookings = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 

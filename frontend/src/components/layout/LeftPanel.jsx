@@ -7,7 +7,7 @@ export default function LeftPanel() {
       <div className="flex items-center gap-2">
         <Home className="text-[#a3c46a]" />
         <span className="font-bold text-xl">
-          Home<span className="text-[#a3c46a]">Haven</span>
+          AKSHU ELITE HOMES
         </span>
       </div>
 
@@ -31,7 +31,7 @@ export default function LeftPanel() {
       </div>
 
       <p className="text-xs text-[#8aab5c]">
-        © 2025 HomeHaven
+        © 2025 AKSHU ELITE HOMES
       </p>
 
     </div>

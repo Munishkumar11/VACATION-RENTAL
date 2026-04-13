@@ -32,6 +32,10 @@ function UserNavbar({ userRole = "guest" }) {
 
   const role = user?.role || userRole;
   const displayLinks = role === "host" ? hostLinks : guestLinks;
+  const avatarSrc = user?.profilePic || user?.photo || "";
+  const userInitials = user?.name
+    ? user.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
+    : "?";
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -69,40 +73,43 @@ function UserNavbar({ userRole = "guest" }) {
 
   return (
     <>
-      <div ref={containerRef} className="sticky top-0 z-50" >
+      <div ref={containerRef} className="sticky top-0 z-50 px-3 pb-2 pt-3 md:px-6" >
         {/* Main Navbar */}
         <nav
-          className=" bg-[#f5f3ec] border-b border-[#d6cebc] px-4 md:px-6 h-16 flex items-center gap-3 shadow-sm"
+          className="premium-card-strong mx-auto flex h-[74px] max-w-7xl items-center gap-3 rounded-[28px] border border-[rgba(22,58,47,0.12)] px-4 md:px-6"
           role="navigation"
           aria-label="Main navigation"
         >
           {/* Logo */}
           <NavLink
             to="/"
-            className="flex items-center gap-2 shrink-0 no-underline"
+            className="flex shrink-0 items-center gap-3 no-underline"
             aria-label="Go to homepage"
           >
-            <div className="bg-[#6b8c3e] p-1.5 rounded-lg">
-              <Home size={18} className="text-white" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#163a2f] shadow-[0_16px_28px_rgba(22,58,47,0.18)]">
+              <Home size={18} className="text-[#f8f5ef]" />
             </div>
-            <h1 className="text-2xl font-bold text-green-700">AKSHU ELITE HOMES</h1>
+            <div className="hidden min-[430px]:block">
+              <h1 className="premium-heading text-[1.55rem] font-semibold leading-none tracking-[-0.03em] text-[#163a2f]">AKSHU ELITE HOMES</h1>
+              <p className="mt-1 text-[10px] uppercase tracking-[0.34em] text-[#8f7a57]">Curated Vacation Stays</p>
+            </div>
           </NavLink>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-2 ml-auto">
+          <div className="hidden xl:flex items-center gap-2 ml-auto">
             {displayLinks.map(({ label, icon: Icon, path }) => (
               <NavLink
                 key={path}
                 to={path}
                 className={({ isActive }) =>
-                  `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  `premium-button inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm ${
                     isActive
-                      ? "bg-[#d6e8b8] text-[#3d5028] shadow-sm"
-                      : "text-[#5a7a30] hover:bg-[#e8ecd8] hover:text-[#2d3a1e]"
+                      ? "bg-[#163a2f] text-white shadow-[0_16px_30px_rgba(22,58,47,0.18)]"
+                      : "premium-pill hover:border-[rgba(200,169,107,0.45)] hover:bg-white hover:text-[#10281f]"
                   }`
                 }
               >
-                <Icon size={16} />
+                <Icon size={16} strokeWidth={1.8} />
                 {label}
               </NavLink>
             ))}
@@ -114,16 +121,17 @@ function UserNavbar({ userRole = "guest" }) {
             <NotificationBell
               enabled={!userLoading && !!user}
               storageKey={`notifications_seen_${user?._id || role || "guest"}`}
-              buttonClassName="relative flex h-9 w-9 items-center justify-center rounded-full border border-[#c5c9a0] transition-colors hover:bg-[#e8ecd8] disabled:cursor-not-allowed disabled:opacity-60"
-              iconClassName="text-[#6b8c3e]"
-              badgeClassName="absolute -right-1 -top-1 inline-flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#6b8c3e] px-1 text-[10px] font-bold text-white"
+              buttonClassName="premium-pill relative inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+              iconClassName="text-[#163a2f]"
+              badgeClassName="absolute -right-1 -top-1 inline-flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#163a2f] px-1 text-[10px] font-bold text-white shadow-[0_8px_18px_rgba(22,58,47,0.22)]"
+              panelClassName="!mt-4"
             />
 
             {/* Desktop CTA */}
             {role === "host" && (
   <NavLink
     to="/host/HostDashboard"
-    className="hidden md:block bg-[#6b8c3e] text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-[#5a7a30] transition-colors shadow-sm"
+    className="premium-button hidden rounded-full bg-[#163a2f] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_34px_rgba(22,58,47,0.18)] hover:bg-[#10281f] md:inline-flex"
   >
     Host Dashboard
   </NavLink>
@@ -132,24 +140,28 @@ function UserNavbar({ userRole = "guest" }) {
             
   {/* Avatar */}
 {userLoading ? (
-  <div className="w-8 h-8 rounded-full bg-[#e8ecd8] animate-pulse" />
+  <div className="h-10 w-10 rounded-full bg-[rgba(22,58,47,0.08)] animate-pulse" />
 ) : user ? (
   <button
     onClick={() => { setAccountMenu(!accountMenu); setMobileMenu(false); }}
-    className="flex items-center justify-center h-9 bg-[#e8ecd8] border border-[#c5c9a0] rounded-full px-2 hover:bg-[#d6e8b8] transition-colors"
+    className="premium-pill inline-flex h-11 items-center justify-center gap-2 rounded-full px-2.5 hover:bg-white"
   >
-    <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#8aab5c] to-[#6b8c3e] flex items-center justify-center text-white text-xs font-bold shadow-sm">
-      {user?.name.split(" ").map((w) => w[0]).join("").toUpperCase()}
+    <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(145deg,#c8a96b,#163a2f)] text-xs font-bold text-white shadow-[0_12px_20px_rgba(22,58,47,0.18)]">
+      {avatarSrc ? (
+        <img src={avatarSrc} alt={user.name} className="h-full w-full object-cover" />
+      ) : (
+        userInitials
+      )}
     </div>
     {accountMenu
-      ? <ChevronUp className="text-[#8aab5c] ml-1" size={14} />
-      : <ChevronDown className="text-[#8aab5c] ml-1" size={14} />
+      ? <ChevronUp className="ml-1 text-[#8f7a57]" size={14} />
+      : <ChevronDown className="ml-1 text-[#8f7a57]" size={14} />
     }
   </button>
 ) : (
   <div className="flex items-center gap-2">
-    <NavLink to="/login" className="text-sm font-medium text-[#3d5028] px-4 py-2 rounded-lg border border-[#d6cebc] hover:bg-[#e8ecd8]">Login</NavLink>
-    <NavLink to="/signup" className="text-sm font-medium text-white bg-[#6b8c3e] px-4 py-2 rounded-lg hover:bg-[#5a7a30]">Sign up</NavLink>
+    <NavLink to="/login" className="premium-button premium-pill rounded-full px-4 py-2.5 text-sm font-medium hover:bg-white">Login</NavLink>
+    <NavLink to="/signup" className="premium-button rounded-full bg-[#163a2f] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_18px_34px_rgba(22,58,47,0.18)] hover:bg-[#10281f]">Sign up</NavLink>
   </div>
 )}
 
@@ -157,7 +169,7 @@ function UserNavbar({ userRole = "guest" }) {
             <button
               aria-label="Open menu"
               onClick={() => { setMobileMenu(!mobileMenu); setAccountMenu(false); }}
-              className="md:hidden w-9 h-9 flex items-center justify-center rounded-full border border-[#c5c9a0] hover:bg-[#e8ecd8] transition-colors"
+              className="premium-pill inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-white xl:hidden"
             >
               {mobileMenu
                 ? <X size={20} className="text-[#3d5028]" />
@@ -171,9 +183,9 @@ function UserNavbar({ userRole = "guest" }) {
         <div
           className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
             mobileMenu ? "max-h-125 opacity-100" : "max-h-0 opacity-0"
-          } bg-[#f5f3ec] border-b border-[#d6cebc]`}
+          } mx-auto max-w-7xl`}
         >
-          <div className="flex flex-col p-2">
+          <div className="premium-card-strong flex flex-col rounded-[26px] border border-[rgba(22,58,47,0.12)] p-3">
             {displayLinks.map(({ label, icon: Icon, path }) => (
               <NavLink
                 key={path}
@@ -182,22 +194,22 @@ function UserNavbar({ userRole = "guest" }) {
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${
                     isActive
-                      ? "bg-[#d6e8b8] text-[#3d5028] font-medium"
-                      : "text-[#5a7a30] hover:bg-[#e8ecd8] hover:text-[#2d3a1e]"
+                      ? "bg-[#163a2f] text-white shadow-[0_14px_26px_rgba(22,58,47,0.16)]"
+                      : "text-[#264238] hover:bg-[rgba(22,58,47,0.05)]"
                   }`
                 }
               >
-                <Icon size={20} />
+                <Icon size={18} strokeWidth={1.8} />
                 {label}
               </NavLink>
             ))}
 
-            <div className="my-2 border-t border-[#c5c9a0]" />
+            <div className="my-3 border-t border-[rgba(22,58,47,0.09)]" />
 
             <NavLink
               to={role === "host" ? "/host/HostDashboard" : "/explore"}
               onClick={() => setMobileMenu(false)}
-              className="mx-2 flex items-center justify-center gap-2 bg-[#6b8c3e] text-white font-semibold py-3.5 rounded-xl shadow-sm hover:bg-[#5a7a30] transition-colors"
+              className="premium-button mx-1 flex items-center justify-center gap-2 rounded-2xl bg-[#163a2f] py-3.5 text-white shadow-[0_18px_34px_rgba(22,58,47,0.16)] hover:bg-[#10281f]"
             >
               {role === "host" ? <LayoutDashboard size={18} /> : <Compass size={18} />}
               {role === "host" ? "Host Dashboard" : "Host a Property"}
@@ -208,20 +220,22 @@ function UserNavbar({ userRole = "guest" }) {
 
       {/* Account Dropdown */}
       {accountMenu && (
-        <div className="absolute right-6 top-16 w-72 bg-white border border-[#d6cebc] rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
+        <div className="absolute right-6 top-[92px] z-50 w-72 overflow-hidden rounded-[26px] border border-[rgba(22,58,47,0.12)] bg-[rgba(255,255,255,0.96)] shadow-[0_30px_60px_rgba(17,24,39,0.12)] backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200">
           {/* User Info Header */}
-          <div className="px-5 py-4 bg-[#f5f3ec] border-b border-[#e0dbd0]">
+          <div className="border-b border-[rgba(22,58,47,0.08)] bg-[linear-gradient(180deg,rgba(22,58,47,0.06),rgba(200,169,107,0.08))] px-5 py-5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#8aab5c] to-[#6b8c3e] flex items-center justify-center text-white font-bold shadow-md">
-                {user
-  ? user?.name.split(" ").map((w) => w[0]).join("").toUpperCase()
-  : document.cookie.includes("token") ? "..." : "?"}
+              <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(145deg,#c8a96b,#163a2f)] font-bold text-white shadow-[0_14px_26px_rgba(22,58,47,0.18)]">
+                {avatarSrc ? (
+                  <img src={avatarSrc} alt={user?.name || "User"} className="h-full w-full object-cover" />
+                ) : user ? (
+                  userInitials
+                ) : document.cookie.includes("token") ? "..." : "?"}
               </div>
               <div>
-              <p className="font-bold text-[#2d3a1e]">
+              <p className="text-sm font-semibold text-[#163a2f]">
   {user ? user.name : "Loading..."}
 </p>
-                <p className="text-xs text-[#8aab5c]">
+                <p className="text-[10px] uppercase tracking-[0.28em] text-[#8f7a57]">
                   {role === "host" ? "Host" : "Guest"} • Verified
                 </p>
               </div>
@@ -229,7 +243,7 @@ function UserNavbar({ userRole = "guest" }) {
           </div>
 
           {/* Menu Items */}
-          <div className="flex flex-col p-2">
+          <div className="flex flex-col gap-1 p-2.5">
             {role === "host" && (
               <>
                 <NavLink

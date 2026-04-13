@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const Razorpay = require("razorpay");
+const axios = require("axios");
 const Booking = require("../models/bookingModel");
 const Payment = require("../models/paymentModel");
 const Property = require("../models/propertyModel");
@@ -21,11 +21,41 @@ const getRazorpayConfig = () => {
   return {
     keyId,
     keySecret,
-    instance: new Razorpay({
-      key_id: keyId,
-      key_secret: keySecret,
-    }),
   };
+};
+
+const createRazorpayOrder = async ({ amount, currency, receipt, notes, razorpay }) => {
+  try {
+    const response = await axios.post(
+      "https://api.razorpay.com/v1/orders",
+      {
+        amount,
+        currency,
+        receipt,
+        notes,
+      },
+      {
+        auth: {
+          username: razorpay.keyId,
+          password: razorpay.keySecret,
+        },
+        proxy: false,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return response.data;
+  } catch (apiError) {
+    const details =
+      apiError.response?.data?.error?.description ||
+      apiError.response?.data?.error?.reason ||
+      apiError.response?.data?.error?.code ||
+      apiError.message;
+
+    throw new Error(`Razorpay order creation failed: ${details}`);
+  }
 };
 
 // ── STEP 1: Initiate Mock Payment ─────────────────────────────────────────────
@@ -33,8 +63,12 @@ const getRazorpayConfig = () => {
 const initiatePayment = async (req, res) => {
   try {
     const { propertyId, checkIn, checkOut, guestsCount, paymentType = "full" } = req.body;
-    const guestId = req.user._id || req.user.id;
+    const guestId = req.user?._id || req.user?.id;
     const razorpay = getRazorpayConfig();
+
+    if (!guestId) {
+      return res.status(401).json({ message: "Please login to continue payment." });
+    }
 
     if (!razorpay) {
       return res.status(500).json({
@@ -42,10 +76,22 @@ const initiatePayment = async (req, res) => {
       });
     }
 
+    if (!propertyId || !checkIn || !checkOut || !guestsCount) {
+      return res.status(400).json({
+        message: "Missing payment details. Please select dates and guests again.",
+      });
+    }
+
     // 1. fetch property
     const property = await Property.findById(propertyId);
     if (!property)
       return res.status(404).json({ message: "Property not found" });
+
+    if (!property.host) {
+      return res.status(400).json({
+        message: "This listing is missing host information, so payment cannot be started yet.",
+      });
+    }
 
     // 2. calculate nights + total
     const nights = Math.ceil(
@@ -89,7 +135,7 @@ const initiatePayment = async (req, res) => {
     let order;
 
     try {
-      order = await razorpay.instance.orders.create({
+      order = await createRazorpayOrder({
         amount: amountToPay * 100,
         currency: "INR",
         receipt: `booking_${String(booking._id).slice(-12)}`,
@@ -99,6 +145,7 @@ const initiatePayment = async (req, res) => {
           guestId: String(guestId),
           paymentType,
         },
+        razorpay,
       });
     } catch (orderError) {
       await Booking.findByIdAndDelete(booking._id);
@@ -126,7 +173,7 @@ const initiatePayment = async (req, res) => {
 
   } catch (error) {
     console.log("PAYMENT INITIATE ERROR:", error.message);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: error.message || "Unable to initiate payment." });
   }
 };
 

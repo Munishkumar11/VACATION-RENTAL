@@ -4,6 +4,45 @@ import { MapPin, Calendar, Users, Shield, Smartphone } from "lucide-react";
 import axios from "axios";
 import { toast } from "react-toastify";
 
+const RAZORPAY_CHECKOUT_URL = "https://checkout.razorpay.com/v1/checkout.js";
+
+const loadRazorpayCheckout = () =>
+  new Promise((resolve, reject) => {
+    if (typeof window === "undefined") {
+      reject(new Error("Window is not available."));
+      return;
+    }
+
+    if (typeof window.Razorpay === "function") {
+      resolve(window.Razorpay);
+      return;
+    }
+
+    const existingScript = document.querySelector(
+      `script[src="${RAZORPAY_CHECKOUT_URL}"]`
+    );
+
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve(window.Razorpay), {
+        once: true,
+      });
+      existingScript.addEventListener(
+        "error",
+        () => reject(new Error("Failed to load Razorpay checkout.")),
+        { once: true }
+      );
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = RAZORPAY_CHECKOUT_URL;
+    script.async = true;
+    script.onload = () => resolve(window.Razorpay);
+    script.onerror = () =>
+      reject(new Error("Failed to load Razorpay checkout."));
+    document.body.appendChild(script);
+  });
+
 export default function Payment() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -77,6 +116,8 @@ export default function Payment() {
       );
 
       const { orderId, amount, currency, keyId, bookingId, propertyTitle } = res.data;
+
+      await loadRazorpayCheckout();
 
       if (typeof window === "undefined" || typeof window.Razorpay !== "function") {
         throw new Error("Razorpay checkout failed to load. Please refresh and try again.");

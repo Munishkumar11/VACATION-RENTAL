@@ -9,37 +9,49 @@ const req = async (url, options = {}) => {
 };
 
 const api = {
-  // AUTH
   register: (data) => req("/user/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
-  login:    (data) => req("/user/login",    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
-  logout:   ()     => req("/user/logout",   { method: "POST" }),
+  login: (data) => req("/user/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
+  logout: () => req("/user/logout", { method: "POST" }),
 
-  // PROFILE
-  getProfile:  ()     => req("/user/me"),
+  getProfile: () => req("/user/me"),
   saveProfile: (data) => {
     if (data.photo instanceof File) {
       const form = new FormData();
       Object.entries(data).forEach(([k, v]) => {
+        if (v === undefined || v === null) return;
         if (v instanceof File) form.append(k, v);
-        else if (typeof v === "object" && v !== null) form.append(k, JSON.stringify(v));
+        else if (typeof v === "object") form.append(k, JSON.stringify(v));
         else form.append(k, v);
       });
       return req("/user/me", { method: "PUT", body: form });
     }
-    return req("/user/me", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
-  },
 
-  // CARDS
-  addCard:    (data)   => req("/user/me/cards",           { method: "POST",   headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
+    return req("/user/me", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  },
+  changePassword: (data) => req("/user/me/password", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  }),
+
+  addCard: (data) => req("/user/me/cards", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
   deleteCard: (cardId) => req(`/user/me/cards/${cardId}`, { method: "DELETE" }),
 
-  // BANK
   saveBank: (data) => req("/user/me/bank", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
 
-  // BOOKINGS
   getMyBookings: () => req("/booking/my-bookings"),
+  getHostBookings: () => req("/booking/host"),
+  updateBookingStatus: (bookingId, status) =>
+    req(`/booking/${bookingId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    }),
 
-  // MESSAGES
   getConversations: () => req("/message/conversations"),
   getConversationMessages: (userId, propertyId) =>
     req(`/message/with/${userId}${propertyId ? `?propertyId=${propertyId}` : ""}`),

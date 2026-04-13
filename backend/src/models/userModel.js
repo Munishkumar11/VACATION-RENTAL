@@ -35,9 +35,98 @@ const userSchema = new Schema(
       sparse: true, // allows multiple null values
     },
 
+    username: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    dob: {
+      type: Date,
+      default: null,
+    },
+
+    bio: {
+      type: String,
+      default: "",
+    },
+
+    location: {
+      type: String,
+      default: "",
+    },
+
+    language: {
+      type: String,
+      default: "English",
+    },
+
     profilePic: {
       type: String,
       default: "",
+    },
+
+    emergencyContact: {
+      name: { type: String, default: "" },
+      phone: { type: String, default: "" },
+      relation: { type: String, default: "" },
+    },
+
+    savedCards: {
+      type: [
+        {
+          type: {
+            type: String,
+            default: "",
+          },
+          last4: {
+            type: String,
+            default: "",
+          },
+          expiry: {
+            type: String,
+            default: "",
+          },
+          isDefault: {
+            type: Boolean,
+            default: false,
+          },
+        },
+      ],
+      default: [],
+    },
+
+    bankDetails: {
+      accountHolder: { type: String, default: "" },
+      accountNo: { type: String, default: "" },
+      ifsc: { type: String, default: "" },
+      bank: { type: String, default: "" },
+    },
+
+    payoutSchedule: {
+      type: String,
+      enum: ["Daily", "Weekly", "Monthly", ""],
+      default: "",
+    },
+
+    notificationPreferences: {
+      bookingConfirmations: { type: Boolean, default: true },
+      bookingReminders: { type: Boolean, default: true },
+      newMessages: { type: Boolean, default: true },
+      promotions: { type: Boolean, default: false },
+      updates: { type: Boolean, default: true },
+      smsAlerts: { type: Boolean, default: false },
+      pushNotifs: { type: Boolean, default: true },
+      newBookingRequests: { type: Boolean, default: true },
+      reviewAlerts: { type: Boolean, default: true },
+      payoutNotifs: { type: Boolean, default: true },
+    },
+
+    privacySettings: {
+      showProfile: { type: Boolean, default: true },
+      showReviews: { type: Boolean, default: true },
+      shareDataAnalytics: { type: Boolean, default: false },
+      personalizedAds: { type: Boolean, default: false },
     },
 
     // ✅ Optional Host Details (future use)
@@ -73,6 +162,11 @@ const userSchema = new Schema(
     },
 
     dismissedNotifications: {
+      type: [String],
+      default: [],
+    },
+
+    readNotifications: {
       type: [String],
       default: [],
     },

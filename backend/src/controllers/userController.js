@@ -3,10 +3,12 @@ const bcrypt = require("bcrypt");
 const sendTemplateMail = require("../utils/mailUtil.js");
 const { sendToken } = require("../utils/jwt.js");
 const jwt = require("jsonwebtoken");
+
 const secret = process.env.JWT_SECRET;
+
 const register = async (req, res) => {
   try {
-    console.log("BODY:", req.body); // ✅ debug
+    console.log("BODY:", req.body);
 
     const userData = req.body || {};
 
@@ -18,34 +20,27 @@ const register = async (req, res) => {
 
     const existingUser = await User.findOne({ email: userData.email });
 
-    //checks if the email is already registered
     if (existingUser) {
       return res.status(400).json({
         message: "User email already exists, please login",
       });
     }
 
-    // ✅ password check
     if (!userData.password) {
       return res.status(400).json({
         message: "Password is required",
       });
     }
 
-    // hash password
     const hashedPassword = await bcrypt.hash(userData.password, 10);
     userData.password = hashedPassword;
 
-    //creating user in database
     const createdUser = await User.create(userData);
 
-    //creating token
     sendToken(createdUser, res);
 
-    // hide password in response
     createdUser.password = undefined;
 
-    // ✅ FIX: mail crash handle
     try {
       await sendTemplateMail(
         userData.email,
@@ -63,14 +58,14 @@ const register = async (req, res) => {
       message: "User created successfully",
       data: createdUser,
     });
-
   } catch (error) {
-    console.log("ERROR:", error.message); // ✅ better error
+    console.log("ERROR:", error.message);
     res.status(500).json({
       message: error.message,
     });
   }
 };
+
 const login = async (req, res) => {
   try {
     const { email, password } = req.body || {};
@@ -99,27 +94,25 @@ const login = async (req, res) => {
 
     user.password = undefined;
 
-    // ✅ sendToken sets the cookie
     sendToken(user, res);
 
     res.status(200).json({
       message: "User logged in successfully",
-      data: user,  // ← frontend uses this for role check
+      data: user,
     });
-
   } catch (error) {
     console.log("ERROR:", error);
     res.status(500).json({ message: error.message });
   }
 };
-  
+
 const logout = async (req, res) => {
   try {
     res.clearCookie("token");
 
     res.status(200).json({
       success: true,
-      message: "Logged out successfully"
+      message: "Logged out successfully",
     });
   } catch (error) {
     console.log("ERROR:", error.message);
@@ -145,7 +138,6 @@ const me = async (req, res) => {
   }
 };
 
-// READ ALL USERS
 const getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select("-password");
@@ -156,14 +148,12 @@ const getAllUsers = async (req, res) => {
   }
 };
 
-// UPDATE USER
-// UPDATE USER (admin)
 const updateUser = async (req, res) => {
   try {
     const updatedUser = await User.findByIdAndUpdate(
       req.params.id,
       req.body,
-      {  returnDocument: "after"  }
+      { returnDocument: "after" }
     ).select("-password");
 
     if (!updatedUser) {
@@ -177,7 +167,6 @@ const updateUser = async (req, res) => {
   }
 };
 
-// DELETE USER (admin)
 const deleteUser = async (req, res) => {
   try {
     const deletedUser = await User.findByIdAndDelete(req.params.id);
@@ -193,24 +182,47 @@ const deleteUser = async (req, res) => {
   }
 };
 
-// ─── ADD THESE 4 NEW FUNCTIONS BELOW ──────────────────────────
+const parseJsonField = (value, fallback = undefined) => {
+  if (value === undefined) {
+    return fallback;
+  }
 
-// UPDATE OWN PROFILE (logged-in user)
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    return value;
+  }
+};
+
 const updateMyProfile = async (req, res) => {
   try {
-    const updates = req.body;
-    delete updates.password; // safety — never allow here
-    delete updates.role;     // safety — never allow here
+    const updates = { ...req.body };
+    delete updates.password;
+    delete updates.role;
+    delete updates.email;
 
-    // If photo uploaded via Cloudinary/multer
+    updates.emergencyContact = parseJsonField(updates.emergencyContact, undefined);
+    updates.savedCards = parseJsonField(updates.savedCards, undefined);
+    updates.bankDetails = parseJsonField(updates.bankDetails, undefined);
+    updates.notificationPreferences = parseJsonField(updates.notificationPreferences, undefined);
+    updates.privacySettings = parseJsonField(updates.privacySettings, undefined);
+
     if (req.file?.path) {
-      updates.photo = req.file.path;
+      updates.profilePic = req.file.path;
+    } else if (updates.photo) {
+      updates.profilePic = updates.photo;
     }
 
+    delete updates.photo;
+
     const updatedUser = await User.findByIdAndUpdate(
-      req.user.id,       // ← from authMiddleware (logged-in user's own id)
+      req.user.id,
       updates,
-      {  returnDocument: "after"  }
+      { returnDocument: "after" }
     ).select("-password");
 
     res.status(200).json({ success: true, data: updatedUser });
@@ -220,14 +232,23 @@ const updateMyProfile = async (req, res) => {
   }
 };
 
-// ADD CARD (guest)
 const addCard = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     const { type, last4, expiry } = req.body;
-    const isDefault = user.savedCards.length === 0; // first card = default
+
+    if (!type || !last4 || !expiry) {
+      return res.status(400).json({ message: "Card type, last4 and expiry are required" });
+    }
+
+    if (!Array.isArray(user.savedCards)) {
+      user.savedCards = [];
+    }
+
+    const isDefault = user.savedCards.length === 0;
     user.savedCards.push({ type, last4, expiry, isDefault });
     await user.save();
+
     res.status(200).json({ success: true, data: user.savedCards });
   } catch (error) {
     console.log("ERROR:", error.message);
@@ -235,13 +256,17 @@ const addCard = async (req, res) => {
   }
 };
 
-// DELETE CARD (guest)
 const deleteCard = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     user.savedCards = user.savedCards.filter(
       (c) => c._id.toString() !== req.params.cardId
     );
+
+    if (user.savedCards.length > 0 && !user.savedCards.some((card) => card.isDefault)) {
+      user.savedCards[0].isDefault = true;
+    }
+
     await user.save();
     res.status(200).json({ success: true, data: user.savedCards });
   } catch (error) {
@@ -250,7 +275,6 @@ const deleteCard = async (req, res) => {
   }
 };
 
-// UPDATE BANK DETAILS (host)
 const updateBankDetails = async (req, res) => {
   try {
     const { accountHolder, accountNo, ifsc, bank, payoutSchedule } = req.body;
@@ -260,7 +284,7 @@ const updateBankDetails = async (req, res) => {
         bankDetails: { accountHolder, accountNo, ifsc, bank },
         payoutSchedule,
       },
-      {  returnDocument: "after"  }
+      { returnDocument: "after" }
     ).select("-password");
 
     res.status(200).json({ success: true, data: updatedUser });
@@ -270,7 +294,40 @@ const updateBankDetails = async (req, res) => {
   }
 };
 
-// ─── UPDATE module.exports ─────────────────────────────────────
+const changeMyPassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Current password and new password are required" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "New password must be at least 6 characters long" });
+    }
+
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isMatch) {
+      return res.status(400).json({ message: "Current password is incorrect" });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    res.status(200).json({ success: true, message: "Password updated successfully" });
+  } catch (error) {
+    console.log("ERROR:", error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -279,8 +336,9 @@ module.exports = {
   getAllUsers,
   updateUser,
   deleteUser,
-  updateMyProfile,   
-  addCard,           
-  deleteCard,        
-  updateBankDetails, 
+  updateMyProfile,
+  addCard,
+  deleteCard,
+  updateBankDetails,
+  changeMyPassword,
 };
