@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Plus, Pencil, Trash2, MapPin, Star } from "lucide-react";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { normalizeMediaUrl } from "../../utils/mediaUrl";
 
 export default function HostListings() {
   const [properties, setProperties] = useState([]);
@@ -100,7 +101,7 @@ export default function HostListings() {
               <div className="relative h-[140px] bg-[#e8ecd8] overflow-hidden">
                 {property.images?.[0] ? (
                   <img
-                    src={property.images[0]?.url}
+                    src={normalizeMediaUrl(property.images[0])}
                     alt={property.title}
                     className="w-full h-full object-cover"
                   />

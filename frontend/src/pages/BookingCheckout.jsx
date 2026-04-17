@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { MapPin, Calendar, Users, Shield, ChevronRight, Phone, Mail, User, MessageSquare, Star, Tag } from "lucide-react";
 import { formatRating } from "../utils/formatRating";
+import { normalizeMediaUrl } from "../utils/mediaUrl";
 
 function BookingCheckout() {
   const location = useLocation();
@@ -310,7 +311,7 @@ function BookingCheckout() {
           <div className="bg-white rounded-2xl shadow-sm border border-[#e0dbd0] overflow-hidden sticky top-6">
             <div className="h-44 overflow-hidden">
               <img
-                src={property?.images?.[0]?.url || property?.images?.[0] || "https://placehold.co/600x400?text=Property"}
+                src={normalizeMediaUrl(property?.images?.[0], "https://placehold.co/600x400?text=Property")}
                 alt={property?.title}
                 className="w-full h-full object-cover"
               />

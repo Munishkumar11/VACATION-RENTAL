@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const authMiddleware = require("../middleware/authMiddleware");
-const { isHost } = require("../middleware/authMiddleware");
+const { authMiddleware, isHost } = require("../middlewares/authMiddleware");
 const upload = require("../middlewares/upload");
 
 const {
@@ -13,17 +12,16 @@ const {
   updateBookingStatus,
 } = require("../controllers/hostController");
 
-const { isAuthenticated } = require("../middleware/authMiddleware");
 
 // 🏡 Property Routes
-router.post("/property", isAuthenticated, isHost, upload.array("images", 10), createProperty);
-router.get("/properties", isAuthenticated,isHost, getMyProperties);
-router.put("/property/:id", isAuthenticated,isHost, updateProperty);
-router.delete("/property/:id", isAuthenticated,isHost, deleteProperty);
+router.post("/property", authMiddleware, isHost, upload.array("images", 10), createProperty);
+router.get("/properties", authMiddleware,isHost, getMyProperties);
+router.put("/property/:id", authMiddleware,isHost, updateProperty);
+router.delete("/property/:id", authMiddleware,isHost, deleteProperty);
 
 // 📅 Booking Routes
-router.get("/bookings", isAuthenticated,isHost, getHostBookings);
-router.put("/booking/:id", isAuthenticated,isHost, updateBookingStatus);
+router.get("/bookings", authMiddleware,isHost, getHostBookings);
+router.put("/booking/:id", authMiddleware,isHost, updateBookingStatus);
 
 router.post("/add-property", upload.array("images", 5), (req, res) => {
     const imageUrls = req.files.map(file => file.path);

@@ -7,6 +7,7 @@ import {
   DollarSign, ChevronUp,
 } from "lucide-react";
 import NotificationBell from "./NotificationBell";
+import { normalizeMediaUrl } from "../../utils/mediaUrl";
 
 function UserNavbar({ userRole = "guest" }) {
   const [user, setUser] = useState(null);
@@ -32,7 +33,7 @@ function UserNavbar({ userRole = "guest" }) {
 
   const role = user?.role || userRole;
   const displayLinks = role === "host" ? hostLinks : guestLinks;
-  const avatarSrc = user?.profilePic || user?.photo || "";
+  const avatarSrc = normalizeMediaUrl(user?.profilePic || user?.photo || "");
   const userInitials = user?.name
     ? user.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
     : "?";
@@ -50,7 +51,7 @@ function UserNavbar({ userRole = "guest" }) {
 
   useEffect(() => {
     axios
-      .get("http://localhost:5000/user/me", { withCredentials: true })
+      .get("/user/me", { withCredentials: true })
       .then((res) => { setUser(res.data.data); })
       .catch((err) => { console.log(err); })
       .finally(() => { setUserLoading(false); });
@@ -60,7 +61,7 @@ function UserNavbar({ userRole = "guest" }) {
      console.log("LOGOUT CLICKED");
     console.log("LOGOUT CLICKED");
   try {
-    await axios.post("http://localhost:5000/user/logout",{}, { withCredentials: true });
+    await axios.post("/user/logout",{}, { withCredentials: true });
     localStorage.removeItem("user");
     setUser(null);
     setAccountMenu(false);

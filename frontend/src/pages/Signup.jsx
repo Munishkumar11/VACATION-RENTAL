@@ -24,7 +24,11 @@ export default function Signup() {
   const password = watch("password");
   const navigate = useNavigate();
 
-const onSubmit = async (data) => {
+  const handleGoogleSignIn = () => {
+    window.location.href = `/auth/google?role=${encodeURIComponent(role)}`;
+  };
+
+  const onSubmit = async (data) => {
   try {
     setLoading(true);
     const { confirmPassword: _, ...userData } = data;
@@ -164,7 +168,7 @@ const onSubmit = async (data) => {
                 Forgot password?
               </Link>
             </div>
-
+             
             <button
               type="submit"
               className={`w-full mt-4 bg-[#6b8c3e] text-white py-3 rounded-xl hover:bg-[#5a7a30] transition-colors shadow-sm ${loading && "opacity-70"}`}
@@ -182,7 +186,11 @@ const onSubmit = async (data) => {
           </div>
 
           {/* Google Sign In */}
-          <button className="w-full mt-6 border text-sm border-[#d6cebc] py-3 rounded-xl flex items-center justify-center gap-4 hover:bg-[#f5f3ec] transition-colors text-[#3d5028]">
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            className="w-full mt-6 border text-sm border-[#d6cebc] py-3 rounded-xl flex items-center justify-center gap-4 hover:bg-[#f5f3ec] transition-colors text-[#3d5028]"
+          >
             <img
               src="https://www.svgrepo.com/show/475656/google-color.svg"
               className="w-5 h-5"

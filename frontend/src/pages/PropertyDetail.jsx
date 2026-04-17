@@ -7,6 +7,7 @@ import {
 import axios from "axios";
 import { toast } from "react-toastify";
 import { formatRating } from "../utils/formatRating";
+import { normalizeMediaUrl } from "../utils/mediaUrl";
 import useRequireLogin from "../hooks/useRequireLogin";
 
 function PropertyDetail() {
@@ -228,7 +229,7 @@ function PropertyDetail() {
             {/* Image Gallery */}
             <div className="bg-white rounded-2xl shadow-sm border border-[#e0dbd0] p-6">
               <img
-                src={property?.images[selectedImage]?.url || property?.images[selectedImage]}
+                src={normalizeMediaUrl(property?.images[selectedImage], "/placeholder-property.jpg")}
                 alt={property?.title}
                 className="w-full h-80 object-cover rounded-xl"
               />
@@ -241,7 +242,7 @@ function PropertyDetail() {
                       selectedImage === index ? "border-[#6b8c3e]" : "border-[#e0dbd0]"
                     }`}
                   >
-                    <img src={image?.url || image} alt="" className="w-full h-full object-cover" />
+                    <img src={normalizeMediaUrl(image, "/placeholder-property.jpg")} alt="" className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
@@ -388,7 +389,7 @@ function PropertyDetail() {
                     <div className="flex items-center gap-3">
                       {host?.profilePic ? (
                         <img
-                          src={host.profilePic}
+                          src={normalizeMediaUrl(host.profilePic)}
                           alt={host?.name || "Host"}
                           className="w-12 h-12 rounded-full object-cover"
                         />

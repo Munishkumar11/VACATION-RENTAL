@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useCallback, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api";
+import { normalizeMediaUrl } from "../../utils/mediaUrl";
 
 const STATUS_STYLES = {
   pending: { background: "#fff3e0", color: "#e65100" },
@@ -14,10 +15,7 @@ const FALLBACK_PROPERTY_IMAGE =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 180"><rect width="220" height="180" fill="%23eef2e8"/><path d="M38 128l34-36 24 28 34-40 52 48H38z" fill="%23bfd0b4"/><circle cx="73" cy="63" r="14" fill="%2392af83"/><text x="110" y="158" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="%23576848">Property image</text></svg>';
 
 function getImageSrc(image) {
-  if (!image) return "";
-  if (typeof image === "string") return image;
-  if (typeof image === "object") return image.url || image.secure_url || "";
-  return "";
+  return normalizeMediaUrl(image);
 }
 
 function getLocationText(location, fallbackLocation) {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../api";
+import { normalizeMediaUrl } from "../utils/mediaUrl";
 
 const STATUS_STYLES = {
   confirmed: { background: "#e8f5e8", color: "#2d6a2d" },
@@ -13,10 +14,7 @@ const FALLBACK_PROPERTY_IMAGE =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 180"><rect width="220" height="180" fill="%23eef2e8"/><path d="M38 128l34-36 24 28 34-40 52 48H38z" fill="%23bfd0b4"/><circle cx="73" cy="63" r="14" fill="%2392af83"/><text x="110" y="158" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="%23576848">Property image</text></svg>';
 
 function getImageSrc(image) {
-  if (!image) return "";
-  if (typeof image === "string") return image;
-  if (typeof image === "object") return image.url || image.secure_url || "";
-  return "";
+  return normalizeMediaUrl(image);
 }
 
 function getLocationText(location, fallbackLocation) {
@@ -168,6 +166,30 @@ function BookingCard({ booking, tab, onCancel, isUpdating }) {
     navigate(`/property/${propertyId}`);
   };
 
+  const handleDownloadInvoice = async () => {
+    try {
+      const res = await fetch(`/payment/invoice/${booking._id}/download`, {
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        throw new Error("Unable to download invoice");
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `invoice-${booking._id}.html`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      window.alert("Invoice is available after a successful payment.");
+    }
+  };
+
   return (
     <div style={styles.card}>
       <div style={styles.cardImg}>
@@ -228,6 +250,9 @@ function BookingCard({ booking, tab, onCancel, isUpdating }) {
                 >
                   {isUpdating ? "Cancelling..." : "Cancel"}
                 </button>
+                <button type="button" style={styles.btnOutline} onClick={handleDownloadInvoice}>
+                  Invoice
+                </button>
                 <button type="button" style={styles.btnPrimary} onClick={handleViewDetails}>
                   View Details
                 </button>
@@ -236,6 +261,7 @@ function BookingCard({ booking, tab, onCancel, isUpdating }) {
             {tab === "completed" && (
               <>
                 <button type="button" style={styles.btnOutline} onClick={handleViewDetails}>Book Again</button>
+                <button type="button" style={styles.btnOutline} onClick={handleDownloadInvoice}>Invoice</button>
                 <button
                   type="button"
                   style={styles.btnPrimary}

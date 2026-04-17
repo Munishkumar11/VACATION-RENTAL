@@ -3,6 +3,8 @@
 const Property = require("../models/propertyModel");
 const Booking = require("../models/bookingModel");
 
+const getUserId = (req) => req.user?._id || req.user?.id;
+
 
 // 🏡 1. Create Property
 exports.createProperty = async (req, res) => {
@@ -48,7 +50,7 @@ exports.createProperty = async (req, res) => {
       images,
       amenities,
       houseRules,
-      host: req.user._id,
+      host: getUserId(req),
     });
 
     res.status(201).json({ message: "Property created successfully", data: property });
@@ -62,7 +64,7 @@ exports.createProperty = async (req, res) => {
 exports.getMyProperties = async (req, res) => {
   try {
     const properties = await Property.find({
-      owner: req.user._id,
+      host: getUserId(req),
     });
 
     res.status(200).json({
@@ -83,10 +85,10 @@ exports.updateProperty = async (req, res) => {
     const property = await Property.findOneAndUpdate(
       {
         _id: req.params.id,
-        owner: req.user._id, // ensure host owns it
+        host: getUserId(req), // ensure host owns it
       },
       req.body,
-      {  returnDocument: "after" }
+      { new: true }
     );
 
     if (!property) {
@@ -112,7 +114,7 @@ exports.deleteProperty = async (req, res) => {
   try {
     const property = await Property.findOneAndDelete({
       _id: req.params.id,
-      owner: req.user._id,
+      host: getUserId(req),
     });
 
     if (!property) {
@@ -135,21 +137,14 @@ exports.deleteProperty = async (req, res) => {
 // 📅 5. Get Host Bookings
 exports.getHostBookings = async (req, res) => {
   try {
-    const bookings = await Booking.find()
-      .populate({
-        path: "property",
-        match: { owner: req.user._id },
-      })
-      .populate("user");
-
-    // filter null properties
-    const filteredBookings = bookings.filter(
-      (b) => b.property !== null
-    );
+    const bookings = await Booking.find({ host: getUserId(req) })
+      .populate("property", "title location pricePerNight images")
+      .populate("guest", "name email")
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       message: "Host bookings fetched",
-      data: filteredBookings,
+      data: bookings,
     });
   } catch (error) {
     res.status(500).json({
@@ -173,7 +168,7 @@ exports.updateBookingStatus = async (req, res) => {
     }
 
     // check if property belongs to host
-    if (booking.property.owner.toString() !== req.user._id.toString()) {
+    if (!booking.property || booking.property.host.toString() !== getUserId(req).toString()) {
       return res.status(403).json({
         message: "Not authorized",
       });

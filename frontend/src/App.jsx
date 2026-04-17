@@ -3,7 +3,7 @@ import "react-toastify/dist/ReactToastify.css";  // ← add this line, might be 
 import AppRouter from "./router/AppRouter";
 import axios from "axios";
 
-axios.defaults.baseURL = "http://localhost:5000";
+axios.defaults.baseURL = "";
 axios.defaults.withCredentials = true;
 
 function App() {

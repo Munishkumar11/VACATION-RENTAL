@@ -15,6 +15,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use("/uploads", express.static("uploads"));
 app.use("/payment", paymentRoutes);
+app.use("/auth", require("./src/routers/authRouter.js"));
+console.log("Auth routes mounted at /auth");
 
 const db = require("./src/utils/db.js");
 db();
@@ -51,7 +53,7 @@ io.on("connection", (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT, 10) || 5000;
 
 const startServer = (port) => {
   server
@@ -60,8 +62,9 @@ const startServer = (port) => {
     })
     .on("error", (err) => {
       if (err.code === "EADDRINUSE") {
-        console.log(`Port ${port} busy, trying ${port + 1}...`);
-        startServer(port + 1);
+        const nextPort = port + 1;
+        console.log(`Port ${port} busy, trying ${nextPort}...`);
+        startServer(nextPort);
       } else {
         console.error(err);
       }

@@ -19,12 +19,16 @@ export default function Login() {
     formState: { errors },
   } = useForm();
 
+  const handleGoogleSignIn = () => {
+    window.location.href = "/auth/google";
+  };
+
   const submitHandler = async (data) => {
   try {
     setLoading(true);
 
     const res = await axios.post(
-      "http://localhost:5000/user/login",
+      "/user/login",
       data,
       { withCredentials: true }
     );
@@ -137,7 +141,11 @@ export default function Login() {
           </div>
 
           {/* Google Sign In */}
-          <button className="w-full mt-6 border text-sm border-[#d6cebc] py-3 rounded-xl flex items-center justify-center gap-4 hover:bg-[#f5f3ec] transition-colors text-[#3d5028]">
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            className="w-full mt-6 border text-sm border-[#d6cebc] py-3 rounded-xl flex items-center justify-center gap-4 hover:bg-[#f5f3ec] transition-colors text-[#3d5028]"
+          >
             <img
               src="https://www.svgrepo.com/show/475656/google-color.svg"
               className="w-5 h-5"

@@ -190,7 +190,7 @@ export default function MessagesCenter() {
   useEffect(() => {
     if (!currentUser?._id) return undefined;
 
-    socketRef.current = io("http://localhost:5000");
+    socketRef.current = io("/");
     socketRef.current.emit("join", currentUser._id);
 
     socketRef.current.on("getMessage", async (message) => {

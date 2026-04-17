@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { MapPin, Calendar, Users, Shield, Smartphone } from "lucide-react";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { normalizeMediaUrl } from "../utils/mediaUrl";
 
 const RAZORPAY_CHECKOUT_URL = "https://checkout.razorpay.com/v1/checkout.js";
 
@@ -149,6 +150,12 @@ export default function Payment() {
       };
 
       const razorpayInstance = new window.Razorpay(options);
+      razorpayInstance.on("payment.failed", (response) => {
+        console.error("Razorpay payment failed:", response?.error);
+        toast.error(response?.error?.description || "Payment failed. Please try again.");
+        setLoading(false);
+        if (bookingId) navigate(`/booking/failed?bookingId=${bookingId}`);
+      });
       razorpayInstance.open();
 
     } catch (error) {
@@ -294,7 +301,7 @@ export default function Payment() {
           <div className="bg-white rounded-2xl border border-[#e0dbd0] overflow-hidden sticky top-6">
             <div className="h-36 overflow-hidden">
               <img
-                src={property?.images?.[0]?.url || "https://placehold.co/600x400?text=Property"}
+                src={normalizeMediaUrl(property?.images?.[0], "https://placehold.co/600x400?text=Property")}
                 alt={property?.title}
                 className="w-full h-full object-cover"
               />

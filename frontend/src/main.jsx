@@ -3,7 +3,7 @@ import './index.css'
 import App from './App'  // ← change this
 import axios from 'axios'
 
-axios.defaults.baseURL = 'http://localhost:5000';
+axios.defaults.baseURL = '';
 axios.defaults.withCredentials = true;
 
 createRoot(document.getElementById('root')).render(

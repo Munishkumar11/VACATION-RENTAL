@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { MapPin, Star, Users, Bed, Bath } from "lucide-react";
 import { toast } from "react-toastify";
 import { formatRating } from "../utils/formatRating";
+import { normalizeMediaUrl } from "../utils/mediaUrl";
 
 
 export default function Wishlist() {
@@ -118,7 +119,7 @@ export default function Wishlist() {
               {/* Image */}
               <div className="relative h-[200px] overflow-hidden bg-[#e8ecd8]">
                 <img
-                  src={property.images?.[0]?.url || property.images?.[0] || "/placeholder-property.jpg"}
+                  src={normalizeMediaUrl(property.images?.[0], "/placeholder-property.jpg")}
                   alt={property.title}
                   className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-400"
                 />

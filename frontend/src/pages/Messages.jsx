@@ -61,7 +61,7 @@ export default function Messages() {
 }, [activeId, activeConv?.messages.length]);
 
 useEffect(() => {
-  socket.current = io("http://localhost:5000");
+  socket.current = io("/");
 
   // join user (replace with real user id later)
   socket.current.emit("join", "user1");
@@ -109,7 +109,7 @@ useEffect(() => {
   socket.current.emit("sendMessage", messageData);
 
   // ✅ save in DB
-  await fetch("http://localhost:5000/message", {
+  await fetch("/message", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

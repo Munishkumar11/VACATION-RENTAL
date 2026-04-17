@@ -39,7 +39,7 @@ function HostNavbar() {
 
   const handleLogout = async () => {
     try {
-      await axios.get("http://localhost:5000/user/logout", { withCredentials: true });
+      await axios.get("/user/logout", { withCredentials: true });
       localStorage.removeItem("user");
       navigate("/login");
       window.location.reload();

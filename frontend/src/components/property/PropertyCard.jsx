@@ -3,6 +3,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { Link } from "react-router-dom";
 import { formatRating } from "../../utils/formatRating";
+import { normalizeMediaUrl } from "../../utils/mediaUrl";
 import useRequireLogin from "../../hooks/useRequireLogin";
 import {
   MapPin,
@@ -39,6 +40,7 @@ function PropertyCard({ property, initialWishlisted = false }) {
   const [wishlisted, setWishlisted] = useState(initialWishlisted);
   const [loading, setLoading] = useState(false);
   const requireLogin = useRequireLogin();
+  const imageSrc = normalizeMediaUrl(images[0], "/placeholder-property.jpg");
 
   const handleWishlist = async (e) => {
     e.preventDefault();
@@ -73,7 +75,7 @@ function PropertyCard({ property, initialWishlisted = false }) {
       {/* Image Section */}
       <div className="relative h-64 overflow-hidden rounded-[24px] rounded-b-none">
         <img
-          src={images[0]?.url || "/placeholder-property.jpg"}
+          src={imageSrc}
           alt={title}
           className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
         />
